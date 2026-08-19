@@ -20,8 +20,9 @@ def test_health_endpoint():
 def test_login_page_loads():
     response = client.get("/")
     assert response.status_code == 200
-    assert "AuthForge Level 2" in response.text
-    assert "Authentication Security Challenge" in response.text
+    assert "AuthForge" in response.text
+    assert "Level 2" in response.text
+
 
 
 def test_login_missing_parameters_returns_400():

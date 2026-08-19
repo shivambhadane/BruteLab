@@ -3,36 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AuthForge Level 2 — Classroom Challenge</title>
+    <title>AuthForge Level 2 — Security Lab</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
     <div class="app-container">
         <!-- Header -->
         <header class="header-brand">
-            <div class="brand-badge-container">
-                <span class="badge badge-defended">Level 2 Defended</span>
-                <span class="badge badge-info">Sandbox</span>
-                <span class="badge badge-crypto">Argon2id</span>
+            <div>
+                <h1 class="brand-title">AuthForge</h1>
+                <p class="brand-subtitle">Level 2 Authentication Security Laboratory</p>
             </div>
-            <h1 class="brand-title">AuthForge Level 2</h1>
-            <p class="brand-subtitle">Authentication Security Challenge Laboratory</p>
+            <div>
+                <span class="brand-tag">v2.0.0 • Argon2id</span>
+            </div>
         </header>
 
-        <!-- Main Content Layout -->
+        <!-- Main Content Grid -->
         <div class="grid-layout">
             
             <!-- Left Column: Student Code & Challenge Testing -->
             <div class="column-stack">
                 
-                <!-- Step 1: Claim Challenge -->
-                <div class="glass-card">
-                    <h2 class="card-title">Student Challenge Portal</h2>
+                <!-- Initialize Challenge -->
+                <div class="panel">
+                    <div class="panel-title" style="margin-bottom: 0.85rem;">Student Access</div>
                     
                     <form id="start-challenge-form" onsubmit="handleStartChallenge(event)">
                         <div class="form-group">
-                            <label class="form-label" for="student_code">Student Code / ID</label>
-                            <div class="input-inline-group">
+                            <label class="form-label" for="student_code">Student Identifier</label>
+                            <div class="input-group">
                                 <input type="text" id="student_code" name="student_code" class="form-input" placeholder="e.g. STU-037 or 37" required autocomplete="off">
                                 <button type="submit" class="btn-primary btn-inline">
                                     Initialize
@@ -42,115 +42,108 @@
                     </form>
                 </div>
 
-                <!-- Step 2: Challenge Dashboard Card (Hidden until claimed) -->
-                <div class="glass-card" id="challenge-card" style="display: none;">
-                    <div class="challenge-meta-header">
-                        <div>
-                            <span class="meta-label">Assigned Challenge</span>
-                            <h3 id="display-challenge-id" class="meta-value-highlight">AF-000</h3>
-                        </div>
-                        <div style="text-align: right;">
-                            <span class="meta-label">Assigned User</span>
-                            <div id="display-username" class="meta-value">student00</div>
-                        </div>
+                <!-- Active Challenge Session (Hidden until initialized) -->
+                <div class="panel" id="challenge-card" style="display: none;">
+                    <div class="panel-header">
+                        <span class="panel-title">Active Session</span>
+                        <span id="display-challenge-id" class="font-mono" style="font-size: 0.85rem; color: var(--accent-blue-hover);">AF-000</span>
                     </div>
 
-                    <div class="metrics-grid">
-                        <div class="metric-box">
-                            <div class="metric-label">Attempts Remaining</div>
-                            <div id="display-attempts" class="metric-value">50 / 50</div>
+                    <div style="margin-bottom: 1rem;">
+                        <div class="info-row">
+                            <span class="info-label">Assigned Account</span>
+                            <span id="display-username" class="info-value">student00</span>
                         </div>
-                        <div class="metric-box">
-                            <div class="metric-label">Security Controls</div>
-                            <div id="display-defense" class="metric-value">ACTIVE</div>
+                        <div class="info-row">
+                            <span class="info-label">Remaining Budget</span>
+                            <span id="display-attempts" class="info-value">50 / 50</span>
+                        </div>
+                        <div class="info-row" style="border-bottom: none;">
+                            <span class="info-label">Rate Limiting</span>
+                            <span class="info-value" style="color: #3fb950;">5 / Window</span>
                         </div>
                     </div>
 
                     <div id="alert-box"></div>
 
-                    <!-- Password Authentication Form -->
+                    <!-- Password Test Form -->
                     <form id="login-form" onsubmit="handleLoginSubmit(event)">
                         <div class="form-group">
                             <label class="form-label" for="password">Password Candidate</label>
-                            <input type="password" id="password" name="password" class="form-input" placeholder="Enter password candidate..." required autocomplete="off">
+                            <input type="password" id="password" name="password" class="form-input" placeholder="Enter candidate password..." required autocomplete="off">
                             <div id="password-hint-box" class="form-hint"></div>
                         </div>
 
                         <button type="submit" class="btn-primary" id="login-btn">
-                            Submit Authentication Attempt
+                            Submit Authentication
                         </button>
                     </form>
                 </div>
 
-                <!-- Security Defenses Card -->
-                <div class="glass-card">
-                    <h3 class="section-heading">Security Controls Implemented</h3>
-                    <ul class="clean-list">
-                        <li><strong>Argon2id Hashing:</strong> Passwords stored with cryptographic salt & key derivation.</li>
-                        <li><strong>Rate Limiting:</strong> Enforces 5 requests/minute per challenge account.</li>
-                        <li><strong>Account Lockout:</strong> Temporarily locks account after 10 failed attempts.</li>
-                        <li><strong>Challenge Isolation:</strong> Prevents targeting unauthorized user accounts.</li>
+                <!-- Environment Controls -->
+                <div class="panel">
+                    <div class="panel-title" style="margin-bottom: 0.5rem;">Security Controls</div>
+                    <ul class="spec-list">
+                        <li><strong>Storage:</strong> Argon2id salted password hashing</li>
+                        <li><strong>Rate Limit:</strong> 5 requests / minute threshold</li>
+                        <li><strong>Lockout:</strong> Account locks after 10 failures</li>
+                        <li><strong>Isolation:</strong> Strict boundary enforcement</li>
                     </ul>
                 </div>
             </div>
 
-            <!-- Right Column: Leaderboard & Rules -->
+            <!-- Right Column: Leaderboard & Guidelines -->
             <div class="column-stack">
                 
-                <!-- Anonymized Leaderboard -->
-                <div class="glass-card">
-                    <div class="card-header-flex">
-                        <h2 class="card-title">Classroom Leaderboard</h2>
-                        <button onclick="fetchLeaderboard()" class="btn-secondary btn-sm">Refresh</button>
+                <!-- Leaderboard -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <span class="panel-title">Classroom Leaderboard</span>
+                        <button onclick="fetchLeaderboard()" class="btn-secondary">Refresh</button>
                     </div>
 
-                    <div class="table-wrapper">
-                        <table class="minimal-table">
-                            <thead>
-                                <tr>
-                                    <th>Rank</th>
-                                    <th>Challenge ID</th>
-                                    <th>Attempts</th>
-                                    <th>Time</th>
-                                </tr>
-                            </thead>
-                            <tbody id="leaderboard-body">
-                                <tr>
-                                    <td colspan="4" class="table-empty">No completed challenges recorded yet.</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Challenge ID</th>
+                                <th>Attempts</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderboard-body">
+                            <tr>
+                                <td colspan="4" class="table-empty">No completions recorded yet.</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
 
-                <!-- Classroom Rules -->
-                <div class="glass-card">
-                    <h3 class="section-heading">Rules of Engagement</h3>
-                    <ol class="clean-ordered-list">
-                        <li>Use only your assigned challenge account.</li>
-                        <li>Do not target another student's challenge ID.</li>
-                        <li>Do not attack hosting infrastructure.</li>
-                        <li>Do not scan external non-lab systems.</li>
+                <!-- Guidelines -->
+                <div class="panel">
+                    <div class="panel-title" style="margin-bottom: 0.5rem;">Rules of Engagement</div>
+                    <ol style="padding-left: 1.1rem; font-size: 0.8rem; color: var(--fg-muted); line-height: 1.6;">
+                        <li>Only target your assigned student challenge ID.</li>
+                        <li>Do not attempt attacks against platform infrastructure.</li>
+                        <li>Do not scan external non-target IP ranges.</li>
                     </ol>
                 </div>
             </div>
         </div>
 
-        <!-- Terminal Audit Log Feed -->
-        <div class="terminal-card">
+        <!-- Terminal Audit Stream -->
+        <div class="terminal-panel">
             <div class="terminal-header">
-                <div class="terminal-title">
-                    System Audit Stream (logs/auth.log)
-                </div>
-                <button onclick="fetchLogs()" class="btn-secondary btn-sm">Refresh</button>
+                <span class="terminal-title">Audit Stream — logs/auth.log</span>
+                <button onclick="fetchLogs()" class="btn-secondary">Refresh Logs</button>
             </div>
             <div class="terminal-body" id="log-terminal">
-                <div class="log-dim">Loading system event stream...</div>
+                <div class="text-muted">Loading audit events...</div>
             </div>
         </div>
 
         <footer>
-            AuthForge Level 2 — Laboratory Environment
+            AuthForge Level 2 Laboratory Environment
         </footer>
     </div>
 
@@ -179,7 +172,7 @@
                     document.getElementById('challenge-card').style.display = 'block';
                     document.getElementById('alert-box').innerHTML = '';
                 } else {
-                    alert(data.detail || 'Failed to initialize challenge');
+                    alert(data.detail || 'Failed to initialize session');
                 }
             } catch (err) {
                 console.error(err);
@@ -213,7 +206,7 @@
                 }
 
                 if (res.ok && data.status === 'success') {
-                    alertBox.innerHTML = `<div class="alert alert-success">[SUCCESS] ${data.message} Time: ${data.time_taken_seconds || 0}s</div>`;
+                    alertBox.innerHTML = `<div class="alert alert-success">[SUCCESS] ${data.message} (${data.time_taken_seconds || 0}s)</div>`;
                     fetchLeaderboard();
                 } else {
                     alertBox.innerHTML = `<div class="alert alert-danger">[DENIED] ${data.message || 'Authentication Failed'}</div>`;
@@ -234,15 +227,15 @@
                     const data = await res.json();
                     const body = document.getElementById('leaderboard-body');
                     if (data.length === 0) {
-                        body.innerHTML = '<tr><td colspan="4" class="table-empty">No completed challenges recorded yet.</td></tr>';
+                        body.innerHTML = '<tr><td colspan="4" class="table-empty">No completions recorded yet.</td></tr>';
                         return;
                     }
                     body.innerHTML = data.map(item => `
                         <tr>
-                            <td class="col-rank">#${item.rank}</td>
-                            <td class="col-mono">${item.challenge_id}</td>
+                            <td style="font-weight:600;">#${item.rank}</td>
+                            <td class="font-mono">${item.challenge_id}</td>
                             <td>${item.attempts_used}</td>
-                            <td class="col-highlight">${item.time_taken}</td>
+                            <td style="color:#3fb950; font-weight:600;">${item.time_taken}</td>
                         </tr>
                     `).join('');
                 }
@@ -256,7 +249,7 @@
                     const data = await res.json();
                     const container = document.getElementById('log-terminal');
                     if (!data.logs || data.logs.length === 0) {
-                        container.innerHTML = '<div class="log-dim">No events logged.</div>';
+                        container.innerHTML = '<div class="text-muted">No audit events logged.</div>';
                         return;
                     }
                     container.innerHTML = data.logs.map(line => {

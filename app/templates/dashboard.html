@@ -3,58 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AuthForge Level 2 — Dashboard</title>
+    <title>AuthForge Level 2 — Session Dashboard</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
     <div class="app-container">
         <!-- Header -->
-        <header class="header-brand" style="text-align: left; display: flex; justify-content: space-between; align-items: flex-end;">
+        <header class="header-brand">
             <div>
-                <div class="brand-badge-container" style="justify-content: flex-start;">
-                    <span class="badge badge-defended">Completed</span>
-                    <span class="badge badge-info">Level 2</span>
-                </div>
-                <h1 class="brand-title" style="font-size: 2rem;">User Session: {{ username }}</h1>
-                <p class="brand-subtitle">Authentication challenge successfully solved.</p>
+                <h1 class="brand-title">AuthForge Dashboard</h1>
+                <p class="brand-subtitle">Active Session: {{ username }}</p>
             </div>
             <div>
                 <a href="/logout" class="btn-secondary">Logout</a>
             </div>
         </header>
 
-        <!-- Session Overview -->
-        <div class="glass-card" style="margin-bottom: 1.5rem;">
-            <h2 class="card-title">Challenge Verification</h2>
-            <div class="metrics-grid" style="grid-template-columns: repeat(3, 1fr); margin-top: 1rem;">
-                <div class="metric-box">
-                    <div class="metric-label">Active Account</div>
-                    <div class="metric-value" style="color: var(--accent-cyan);">{{ username }}</div>
-                </div>
-                <div class="metric-box">
-                    <div class="metric-label">Password Storage</div>
-                    <div class="metric-value" style="color: var(--accent-emerald);">Argon2id</div>
-                </div>
-                <div class="metric-box">
-                    <div class="metric-label">Rate Limiting</div>
-                    <div class="metric-value" style="color: var(--accent-emerald);">5 / Min</div>
-                </div>
+        <!-- Session Status Panel -->
+        <div class="panel" style="margin-bottom: 1.25rem;">
+            <div class="panel-title" style="margin-bottom: 0.85rem;">Verification Status</div>
+            
+            <div class="info-row">
+                <span class="info-label">Authenticated Account</span>
+                <span class="info-value">{{ username }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Password Hash Verification</span>
+                <span class="info-value" style="color: #3fb950;">Argon2id Pass</span>
+            </div>
+            <div class="info-row" style="border-bottom: none;">
+                <span class="info-label">Rate Limiting Status</span>
+                <span class="info-value" style="color: #3fb950;">Compliant (5/min)</span>
             </div>
         </div>
 
-        <!-- Terminal Live Log Feed -->
-        <div class="terminal-card">
+        <!-- Terminal Audit Stream -->
+        <div class="terminal-panel">
             <div class="terminal-header">
-                <div class="terminal-title">System Audit Stream (logs/auth.log)</div>
-                <button onclick="fetchLogs()" class="btn-secondary btn-sm">Refresh</button>
+                <span class="terminal-title">Audit Stream — logs/auth.log</span>
+                <button onclick="fetchLogs()" class="btn-secondary">Refresh Logs</button>
             </div>
             <div class="terminal-body" id="log-terminal">
-                <div class="log-dim">Loading system event stream...</div>
+                <div class="text-muted">Loading audit events...</div>
             </div>
         </div>
 
         <footer>
-            AuthForge Level 2 — Laboratory Environment
+            AuthForge Level 2 Laboratory Environment
         </footer>
     </div>
 
@@ -66,7 +61,7 @@
                     const data = await res.json();
                     const container = document.getElementById('log-terminal');
                     if (!data.logs || data.logs.length === 0) {
-                        container.innerHTML = '<div class="log-dim">No events logged.</div>';
+                        container.innerHTML = '<div class="text-muted">No audit events logged.</div>';
                         return;
                     }
                     container.innerHTML = data.logs.map(line => {
