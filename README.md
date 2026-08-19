@@ -1,177 +1,80 @@
-# AuthForge Level 1: Vulnerable Login Lab 🛡️⚡
+# BruteLab — Cybersecurity Password Security Laboratory
 
-**AuthForge** is an educational cybersecurity laboratory designed to demonstrate how vulnerable authentication systems function, how password-guessing attacks operate in a controlled environment, and how defensive controls can be progressively introduced.
-
----
-
-## 🎯 Level 1 Purpose & Philosophy
-
-Level 1 establishes the **baseline vulnerable authentication system**. The application deliberately lacks defensive mechanisms (such as rate limiting, account lockout, CAPTCHA, or password hashing) so that students can observe server-side behavior, timing, and log output during authentication attempts.
-
-```
-Build vulnerable system → Understand authentication → Observe attack behavior → Measure weaknesses → Add defenses (Level 2+)
-```
+**BruteLab** is an interactive, educational cybersecurity web application built to demonstrate authentication security, online vs. offline password-cracking methodologies, defensive password hashing, and tool usage with **John the Ripper**.
 
 ---
 
-## ⚠️ Intentionally Present Vulnerabilities (Level 1)
+## 🚀 Key Laboratory Modules
 
-1. **V1 — No Rate Limiting**: The server processes unlimited authentication requests per second.
-2. **V2 — No Account Lockout**: Repeated login failures do not lock or disable accounts.
-3. **V3 — Unhashed Credential Storage**: Passwords in the local database are stored plainly for direct comparison and inspection.
-4. **V4 — No CAPTCHA / Bot Defense**: Automated requests face no interactive challenges.
-5. **V5 — No Artificial Delay**: Verification executes as quickly as possible.
-6. **V6 — Single-Factor Only**: Relies solely on basic Username + Password verification.
+### Level 1: Vulnerable Online Authentication Laboratory
+- Teaches online credential brute-forcing (e.g., using Hydra / Medusa / Python scripts).
+- Plaintext / weak baseline credential verification.
+- Demonstrates online attack footprints and failure rate monitoring.
+
+### Level 2: John the Ripper Offline Hash Cracking Laboratory
+- Teaches offline password-cracking workflows using **John the Ripper**.
+- Students download target hash files (`challenge.txt`) and run local GPU/CPU dictionary cracking attacks on their own machines.
+- Features **3 Progressive Difficulty Tiers**:
+  - **`JR-EASY` (SHA-256)**: Basic dictionary wordlist ingestion (`john --wordlist=dict.txt challenge.txt`).
+  - **`JR-MEDIUM` (SHA-256)**: Rule mutations and special character variations (`john --rules --wordlist=dict.txt challenge.txt`).
+  - **`JR-HARD` (Argon2id)**: Memory-hard salted hash comparison demonstrating how modern cryptographic hashing degrades cracking speeds.
 
 ---
 
-## 🚀 Getting Started
+## 🛠️ Architecture & Tech Stack
 
-### 1. Prerequisites
-- Python 3.10+
-- `git`
+- **Backend**: Python 3.14 / FastAPI
+- **Database**: SQLite (`data/brutelab.db`)
+- **Password Hashing**: `SHA-256`, `Argon2id` (`argon2-cffi`)
+- **Frontend**: Clean Minimal Developer Interface (GitHub Dark Theme)
+- **Test Suite**: pytest / FastAPI TestClient
 
-### 2. Environment Setup
+---
 
+## 📋 Installation & Running Locally
+
+### 1. Clone & Setup Virtual Environment
 ```bash
-# Clone repository
 git clone https://github.com/shivambhadane/BruteLab.git
 cd BruteLab
 
-# Create and activate virtual environment
 python3 -m venv venv
 source venv/bin/activate
-
-# Install dependencies
 pip install -r requirements.txt
 ```
 
-### 3. Launching AuthForge
-
-Start the FastAPI application server locally:
-
+### 2. Launch Development Server
 ```bash
-uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+uvicorn app.main:app --reload --port 8000
 ```
+Open `http://localhost:8000` in your web browser.
 
-Once running, navigate to:
-- **Login Page**: `http://127.0.0.1:8000`
-- **API Health**: `http://127.0.0.1:8000/health`
-- **Dashboard**: `http://127.0.0.1:8000/dashboard` (Requires authentication)
-
----
-
-## 🔑 Lab Test Accounts
-
-The local database (`data/authforge.db`) automatically initializes with these lab accounts:
-
-| Username | Password | Role |
-| :--- | :--- | :--- |
-| `testuser` | `password123` | Standard Test User |
-| `labuser` | `cyberlab2026` | Laboratory Account |
-| `student` | `studentpass` | Student Account |
-| `admin` | `admin123` | System Administrator |
-
----
-
-## 📡 API Endpoints
-
-### `GET /`
-Renders the interactive AuthForge login interface.
-
-### `POST /login`
-Authenticates credentials. Accepts both HTML form data and JSON payloads.
-
-**JSON Request:**
-```json
-{
-  "username": "testuser",
-  "password": "password123"
-}
-```
-
-**JSON Success Response (200 OK):**
-```json
-{
-  "status": "success",
-  "message": "Authentication successful.",
-  "username": "testuser"
-}
-```
-
-**JSON Failure Response (401 Unauthorized):**
-```json
-{
-  "status": "failed",
-  "message": "Invalid username or password."
-}
-```
-
-### `GET /dashboard`
-Renders the authenticated control panel and live authentication log viewer.
-
-### `GET /api/logs`
-Returns the recent log entries recorded in `logs/auth.log`.
-
----
-
-## 📜 Attack Observability & Logging
-
-Every login attempt automatically appends a timestamped log entry to `logs/auth.log`:
-
-```text
-2026-08-19 07:30:21 | username=testuser | result=FAILED
-2026-08-19 07:30:35 | username=testuser | result=SUCCESS
-```
-
-To monitor authentication events live from your terminal:
+### 3. Run Test Suite
 ```bash
-tail -f logs/auth.log
-```
-Or view the live updating stream built directly into the AuthForge Dashboard UI.
-
----
-
-## 🧪 Running Automated Tests
-
-Run the test suite using `pytest`:
-
-```bash
-PYTHONPATH=. ./venv/bin/pytest -v
+PYTHONPATH=. pytest -v
 ```
 
 ---
 
-## 📁 Repository Structure
+## 💡 Student Workflow (John the Ripper Lab)
 
-```
-BruteLab/
-├── app/
-│   ├── __init__.py
-│   ├── main.py          # FastAPI application routes
-│   ├── database.py      # SQLite connection & seed schema
-│   ├── models.py        # Pydantic schemas
-│   ├── auth.py          # Vulnerable verification & logging logic
-│   ├── templates/
-│   │   ├── login.html   # Login interface
-│   │   └── dashboard.html # Authenticated dashboard & log console
-│   └── static/
-│       └── style.css    # Modern dark mode design system
-├── data/
-│   └── authforge.db     # Local SQLite database instance
-├── docs/
-│   └── v1.md            # PRD - AuthForge Level 1 Specification
-├── logs/
-│   └── auth.log         # Authentication event log stream
-├── tests/
-│   └── test_auth.py     # pytest test suite
-├── requirements.txt
-├── README.md
-├── .gitignore
-└── LICENSE
-```
+1. **Select Student ID**: Enter or select your assigned student identifier (e.g., `STU-001` through `STU-070`).
+2. **Select Challenge Tier**: Choose `JR-EASY`, `JR-MEDIUM`, or `JR-HARD`.
+3. **Download Hash File**: Click **Download Hash File** to save `challenge.txt` locally.
+4. **Execute John the Ripper**:
+   ```bash
+   # Tier 1 Easy Wordlist Attack
+   john --wordlist=passwords.txt challenge.txt
+
+   # Tier 2 Medium Rule Mutation Attack
+   john --rules --wordlist=passwords.txt challenge.txt
+
+   # Show Cracked Passwords
+   john --show challenge.txt
+   ```
+5. **Submit Recovered Password**: Paste your plaintext answer into BruteLab to verify completion.
 
 ---
 
-## ⚖️ Educational Disclaimer
-This repository is built strictly for **educational cybersecurity research** in isolated local environments. Never run authentication attacks against external systems or unauthorized targets.
+## 🔒 Security Notice & Disclaimer
+BruteLab is designed strictly for classroom educational purposes and defensive security training. Unauthorized access or scanning against non-consensual targets is strictly prohibited.

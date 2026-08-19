@@ -1,7 +1,7 @@
-# AuthForge Level 2 — John the Ripper Offline Cracking Laboratory
+# BruteLab Level 2 — John the Ripper Offline Cracking Laboratory
 
 ## Executive Summary
-Level 2 of AuthForge transitions from an online login attack surface to an **offline password-hash cracking laboratory**. By supplying students with formatted hash files (`challenge.txt`), students use **John the Ripper** locally on their personal machines. This design offloads computationally heavy guessing attacks from the cloud host (Render/AWS) to student laptops while providing a authentic cybersecurity learning experience.
+Level 2 of BruteLab transitions from an online login attack surface to an **offline password-hash cracking laboratory**. By supplying students with formatted hash files (`challenge.txt`), students use **John the Ripper** locally on their personal machines. This design offloads computationally heavy guessing attacks from the cloud host (Render/AWS) to student laptops while providing an authentic cybersecurity learning experience.
 
 ---
 
@@ -19,8 +19,8 @@ Level 2 of AuthForge transitions from an online login attack surface to an **off
 
 | Tier | Challenge ID | Hash Algorithm | Password Complexity | Learning Objective |
 | :--- | :--- | :--- | :--- | :--- |
-| **Tier 1 (Easy)** | `JR-XXX-EASY` | `SHA-256` | Weak wordlist word (e.g. `shadow88`) | Learn basic John execution and wordlist ingestion. |
-| **Tier 2 (Medium)** | `JR-XXX-MEDIUM` | `SHA-256` | Mutated word (e.g. `CyberLab2026!`) | Learn John rules and candidate space expansion. |
+| **Tier 1 (Easy)** | `JR-XXX-EASY` | `SHA-256` | Weak wordlist word | Learn basic John execution and wordlist ingestion. |
+| **Tier 2 (Medium)** | `JR-XXX-MEDIUM` | `SHA-256` | Mutated word | Learn John rules and candidate space expansion. |
 | **Tier 3 (Hard)** | `JR-XXX-HARD` | `Argon2id` | Dictionary word with salt | Understand why memory-hard hashes degrade cracking speeds. |
 
 ---
@@ -28,7 +28,7 @@ Level 2 of AuthForge transitions from an online login attack surface to an **off
 ## Student Workflow & System Architecture
 
 ```text
-               AUTHFORGE SERVER
+               BRUTELAB SERVER
                       │
                Student enters ID (e.g. STU-037)
                       │
@@ -56,10 +56,10 @@ Level 2 of AuthForge transitions from an online login attack surface to an **off
              Password Recovered
                       │
                       ▼
-             Submit to AuthForge
+             Submit to BruteLab
                       │
                       ▼
-             AUTHFORGE SERVER
+             BRUTELAB SERVER
            Verify Answer Hash
                       │
              ┌────────┴────────┐
@@ -68,9 +68,6 @@ Level 2 of AuthForge transitions from an online login attack surface to an **off
              │                 │
              ▼                 ▼
           Solved           Try Again
-             │
-             ▼
-        Leaderboard
 ```
 
 ---
@@ -96,32 +93,6 @@ student37:$argon2id$v=19$m=65536,t=3,p=4$c29tZXNhbHQ$5z9s...
 ### 1. Initialize Student Challenge
 - **Endpoint**: `POST /challenge/start`
 - **Payload**: `{"student_code": "STU-037"}`
-- **Response**:
-  ```json
-  {
-    "student_code": "STU-037",
-    "challenges": [
-      {
-        "challenge_id": "JR-037-EASY",
-        "tier": "EASY",
-        "hash_type": "SHA-256",
-        "status": "ACTIVE"
-      },
-      {
-        "challenge_id": "JR-037-MEDIUM",
-        "tier": "MEDIUM",
-        "hash_type": "SHA-256",
-        "status": "ACTIVE"
-      },
-      {
-        "challenge_id": "JR-037-HARD",
-        "tier": "HARD",
-        "hash_type": "Argon2id",
-        "status": "ACTIVE"
-      }
-    ]
-  }
-  ```
 
 ### 2. Download Hash File
 - **Endpoint**: `GET /challenge/download/{challenge_id}`
@@ -129,41 +100,7 @@ student37:$argon2id$v=19$m=65536,t=3,p=4$c29tZXNhbHQ$5z9s...
 
 ### 3. Submit Recovered Password
 - **Endpoint**: `POST /challenge/submit`
-- **Payload**: `{"challenge_id": "JR-037-EASY", "password": "cyberlab2026"}`
-- **Response**:
-  ```json
-  {
-    "status": "success",
-    "message": "CORRECT! Password verified.",
-    "challenge_id": "JR-037-EASY",
-    "time_taken_seconds": 92.4
-  }
-  ```
-
-### 4. Classroom Leaderboard
-- **Endpoint**: `GET /leaderboard`
-- **Response**: Ranks students by number of tiers completed and total time taken.
-
----
-
-## Database Schema (SQLite)
-
-```sql
-CREATE TABLE IF NOT EXISTS challenge_hashes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    student_code TEXT NOT NULL,
-    challenge_id TEXT UNIQUE NOT NULL,
-    tier TEXT NOT NULL, -- EASY, MEDIUM, HARD
-    hash_type TEXT NOT NULL, -- SHA256, ARGON2ID
-    username TEXT NOT NULL,
-    hash_value TEXT NOT NULL,
-    plain_password TEXT NOT NULL,
-    status TEXT DEFAULT 'ACTIVE', -- ACTIVE, SOLVED
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    completed_at TIMESTAMP,
-    time_taken_seconds REAL
-);
-```
+- **Payload**: `{"challenge_id": "JR-037-EASY", "password": "<recovered_password>"}`
 
 ---
 

@@ -9,7 +9,8 @@ ph = PasswordHasher()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
-DB_PATH = DATA_DIR / "authforge.db"
+DB_PATH = DATA_DIR / "brutelab.db"
+
 
 def get_db_connection() -> sqlite3.Connection:
     """Creates and returns a connection to the SQLite database."""

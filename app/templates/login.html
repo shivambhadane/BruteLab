@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AuthForge Level 2 — John the Ripper Lab</title>
+    <title>BruteLab Level 2 — John the Ripper Lab</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -11,7 +11,7 @@
         <!-- Header -->
         <header class="header-brand">
             <div>
-                <h1 class="brand-title">AuthForge</h1>
+                <h1 class="brand-title">BruteLab</h1>
                 <p class="brand-subtitle">Level 2 — John the Ripper Offline Cracking Laboratory</p>
             </div>
             <div>
@@ -98,26 +98,15 @@
                     <ol style="padding-left: 1.1rem; font-size: 0.8rem; color: var(--fg-muted); line-height: 1.6;">
                         <li>Download hash files to student computer.</li>
                         <li>Run John the Ripper locally on your machine.</li>
-                        <li>Submit recovered plaintext answers to AuthForge.</li>
+                        <li>Submit recovered plaintext answers to BruteLab.</li>
                         <li>Do not scan external non-target IP ranges.</li>
                     </ol>
                 </div>
             </div>
         </div>
 
-        <!-- Terminal Audit Stream -->
-        <div class="terminal-panel">
-            <div class="terminal-header">
-                <span class="terminal-title">Audit Stream — logs/auth.log</span>
-                <button onclick="fetchLogs()" class="btn-secondary">Refresh Logs</button>
-            </div>
-            <div class="terminal-body" id="log-terminal">
-                <div class="text-muted">Loading audit events...</div>
-            </div>
-        </div>
-
         <footer>
-            AuthForge Level 2 — John the Ripper Offline Cracking Laboratory
+            BruteLab Level 2 — John the Ripper Offline Cracking Laboratory
         </footer>
     </div>
 
@@ -198,7 +187,6 @@
                 } else {
                     alertBox.innerHTML = `<div class="alert alert-danger">[DENIED] ${data.detail || 'Incorrect password candidate'}</div>`;
                 }
-                fetchLogs();
             } catch (err) {
                 console.error(err);
                 document.getElementById('alert-box').innerHTML = '<div class="alert alert-danger">[ERROR] Incorrect password candidate</div>';
@@ -208,30 +196,7 @@
             }
         }
 
-        async function fetchLogs() {
-            try {
-                const res = await fetch('/api/logs');
-                if (res.ok) {
-                    const data = await res.json();
-                    const container = document.getElementById('log-terminal');
-                    if (!data.logs || data.logs.length === 0) {
-                        container.innerHTML = '<div class="text-muted">No audit events logged.</div>';
-                        return;
-                    }
-                    container.innerHTML = data.logs.map(line => {
-                        let className = 'log-line';
-                        if (line.includes('result=SUCCESS')) className += ' log-success';
-                        if (line.includes('result=FAILED')) className += ' log-failed';
-                        return `<div class="${className}">${line}</div>`;
-                    }).join('');
-                    container.scrollTop = container.scrollHeight;
-                }
-            } catch (err) { console.error(err); }
-        }
-
         loadStudentChallenges();
-        fetchLogs();
-        setInterval(fetchLogs, 4000);
     </script>
 </body>
 </html>

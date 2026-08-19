@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AuthForge Level 2 — Session Dashboard</title>
+    <title>BruteLab Level 2 — Session Dashboard</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -11,7 +11,7 @@
         <!-- Header -->
         <header class="header-brand">
             <div>
-                <h1 class="brand-title">AuthForge Dashboard</h1>
+                <h1 class="brand-title">BruteLab Dashboard</h1>
                 <p class="brand-subtitle">Active Session: {{ username }}</p>
             </div>
             <div>
@@ -33,50 +33,13 @@
             </div>
             <div class="info-row" style="border-bottom: none;">
                 <span class="info-label">Rate Limiting Status</span>
-                <span class="info-value" style="color: #3fb950;">Compliant (5/min)</span>
-            </div>
-        </div>
-
-        <!-- Terminal Audit Stream -->
-        <div class="terminal-panel">
-            <div class="terminal-header">
-                <span class="terminal-title">Audit Stream — logs/auth.log</span>
-                <button onclick="fetchLogs()" class="btn-secondary">Refresh Logs</button>
-            </div>
-            <div class="terminal-body" id="log-terminal">
-                <div class="text-muted">Loading audit events...</div>
+                <span class="info-value" style="color: #3fb950;">Compliant</span>
             </div>
         </div>
 
         <footer>
-            AuthForge Level 2 Laboratory Environment
+            BruteLab Level 2 Laboratory Environment
         </footer>
     </div>
-
-    <script>
-        async function fetchLogs() {
-            try {
-                const res = await fetch('/api/logs');
-                if (res.ok) {
-                    const data = await res.json();
-                    const container = document.getElementById('log-terminal');
-                    if (!data.logs || data.logs.length === 0) {
-                        container.innerHTML = '<div class="text-muted">No audit events logged.</div>';
-                        return;
-                    }
-                    container.innerHTML = data.logs.map(line => {
-                        let className = 'log-line';
-                        if (line.includes('result=SUCCESS')) className += ' log-success';
-                        if (line.includes('result=FAILED') || line.includes('RATE_LIMITED') || line.includes('LOCKED')) className += ' log-failed';
-                        return `<div class="${className}">${line}</div>`;
-                    }).join('');
-                    container.scrollTop = container.scrollHeight;
-                }
-            } catch (err) { console.error(err); }
-        }
-        
-        fetchLogs();
-        setInterval(fetchLogs, 4000);
-    </script>
 </body>
 </html>

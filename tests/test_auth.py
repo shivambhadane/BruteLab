@@ -17,8 +17,9 @@ def test_health_endpoint():
 def test_login_page_loads():
     response = client.get("/")
     assert response.status_code == 200
-    assert "AuthForge" in response.text
+    assert "BruteLab" in response.text
     assert "Level 2" in response.text
+
 
 def test_start_missing_student_code():
     response = client.post("/challenge/start", json={"student_code": "STU-999"})

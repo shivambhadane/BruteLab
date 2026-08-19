@@ -16,10 +16,11 @@ from app.auth import (
 )
 
 app = FastAPI(
-    title="AuthForge Level 2 — John the Ripper Offline Cracking Laboratory",
+    title="BruteLab Level 2 — John the Ripper Offline Cracking Laboratory",
     description="Educational offline password-hash cracking lab",
     version="2.1.0"
 )
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 app.mount("/static", StaticFiles(directory=BASE_DIR / "app" / "static"), name="static")
