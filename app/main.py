@@ -1,137 +1,165 @@
 import os
 from pathlib import Path
 from contextlib import asynccontextmanager
+from typing import Optional
 
-from fastapi import FastAPI, Request, Form, Response, status, HTTPException
+from fastapi import FastAPI, Request, Form, Response, status, HTTPException, Query, Header
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from app.config import settings
 from app.database import init_db
-from app.auth import verify_credentials, log_login_attempt, get_recent_logs
-from app.models import LoginRequest, LoginResponse, HealthResponse
+from app.auth import (
+    process_login,
+    get_or_create_student_challenge,
+    get_leaderboard,
+    reset_all_challenges,
+    get_recent_logs
+)
+from app.models import (
+    HealthResponse,
+    StartChallengeRequest,
+    StartChallengeResponse,
+    LoginRequest,
+    LoginResponse,
+    AdminResetRequest
+)
 
 BASE_DIR = Path(__file__).resolve().parent
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialize SQLite database schema and seed default users
+    # Initialize SQLite database schema and seed 70 Level 2 challenge accounts
     init_db()
     yield
 
 app = FastAPI(
-    title="AuthForge Level 1: Vulnerable Login Lab",
-    description="Intentionally vulnerable local authentication system for cybersecurity education.",
-    version="1.0.0",
+    title="AuthForge Level 2: Controlled Live Authentication Challenge",
+    description="Live classroom security challenge with Argon2id hashing, rate limiting, and challenge isolation.",
+    version="2.0.0",
     lifespan=lifespan
 )
 
-# Mount static files & setup templates
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
 @app.get("/health", response_model=HealthResponse)
 async def health_check():
-    """Health check endpoint."""
+    """Basic health check endpoint."""
     return {"status": "ok"}
 
 @app.get("/", response_class=HTMLResponse)
-async def get_login_page(request: Request):
-    """Returns the AuthForge Level 1 login page."""
-    # Check session cookie
+async def get_landing_page(request: Request):
+    """Renders the AuthForge Level 2 challenge landing page & dashboard."""
     username = request.cookies.get("authforge_user")
     if username:
         return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
     return templates.TemplateResponse(request=request, name="login.html")
 
+@app.post("/challenge/start")
+async def start_challenge(req: StartChallengeRequest):
+    """
+    Assigns or retrieves a student's isolated challenge account (e.g. STU-037 -> AF-037).
+    """
+    challenge_data = get_or_create_student_challenge(req.student_code)
+    if not challenge_data:
+        raise HTTPException(status_code=404, detail="Student challenge ID not found. Use STU-001 through STU-070.")
+    return challenge_data
+
 @app.post("/login")
 async def login(
     request: Request,
     response: Response,
-    username: str = Form(None),
-    password: str = Form(None)
+    challenge_id: Optional[str] = Form(None),
+    username: Optional[str] = Form(None),
+    password: Optional[str] = Form(None)
 ):
     """
-    Authenticates a user against local database.
-    Accepts both HTML form submit and JSON payload.
+    Authenticates a candidate password against an assigned challenge account.
+    Enforces rate limiting, progressive delay, account lockout, and Argon2id verification.
     """
     is_json = False
     
-    # Handle JSON content-type if sent by API client/tool
     if request.headers.get("content-type") == "application/json":
         is_json = True
         try:
             body = await request.json()
+            challenge_id = body.get("challenge_id")
             username = body.get("username")
             password = body.get("password")
         except Exception:
             raise HTTPException(status_code=400, detail="Invalid JSON payload")
 
-    if not username or not password:
+    if not challenge_id or not username or not password:
+        err_msg = "challenge_id, username, and password are required."
         if is_json:
-            return JSONResponse(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                content={"status": "failed", "message": "Invalid username or password."}
-            )
+            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"status": "failed", "message": err_msg})
         return templates.TemplateResponse(
             request=request,
             name="login.html",
-            context={"error": "Invalid username or password."},
-            status_code=status.HTTP_401_UNAUTHORIZED
+            context={"error": err_msg},
+            status_code=status.HTTP_400_BAD_REQUEST
         )
 
-    # Verify credentials in database
-    is_valid = verify_credentials(username, password)
+    client_ip = request.client.host if request.client else "127.0.0.1"
+    status_code, result_data = process_login(challenge_id, username, password, client_ip)
 
-    if is_valid:
-        log_login_attempt(username, "SUCCESS")
-        
-        if is_json:
-            json_resp = JSONResponse(
-                status_code=status.HTTP_200_OK,
-                content={"status": "success", "message": "Authentication successful.", "username": username}
-            )
+    if is_json:
+        json_resp = JSONResponse(status_code=status_code, content=result_data)
+        if status_code == 200:
             json_resp.set_cookie(key="authforge_user", value=username)
-            return json_resp
+        return json_resp
 
+    if status_code == 200:
         redirect_resp = RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
         redirect_resp.set_cookie(key="authforge_user", value=username)
         return redirect_resp
 
-    else:
-        log_login_attempt(username, "FAILED")
-        
-        if is_json:
-            return JSONResponse(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                content={"status": "failed", "message": "Invalid username or password."}
-            )
-        
-        return templates.TemplateResponse(
-            request=request,
-            name="login.html",
-            context={"error": "Invalid username or password."},
-            status_code=status.HTTP_401_UNAUTHORIZED
-        )
+    return templates.TemplateResponse(
+        request=request,
+        name="login.html",
+        context={"error": result_data.get("message")},
+        status_code=status_code
+    )
+
+@app.get("/challenge/status")
+async def get_challenge_status(challenge_id: str = Query(...)):
+    """Returns status and attempt budget for a given challenge account."""
+    conn = get_or_create_student_challenge(challenge_id)
+    if not conn:
+        raise HTTPException(status_code=404, detail="Challenge ID not found")
+    return conn
+
+@app.get("/leaderboard")
+async def get_anonymized_leaderboard():
+    """Returns anonymized rankings of completed challenges."""
+    return get_leaderboard()
+
+@app.post("/api/admin/reset")
+async def admin_reset(req: AdminResetRequest):
+    """Protected admin endpoint to reset classroom challenges and start a new round."""
+    success = reset_all_challenges(req.admin_secret)
+    if not success:
+        raise HTTPException(status_code=403, detail="Invalid admin secret key")
+    return {"status": "success", "message": "Classroom challenge environment successfully reset."}
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def get_dashboard(request: Request):
-    """Dashboard page accessible after authentication."""
+    """Dashboard page for authenticated users."""
     username = request.cookies.get("authforge_user")
     if not username:
         return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
     return templates.TemplateResponse(request=request, name="dashboard.html", context={"username": username})
 
-
 @app.get("/logout")
 async def logout():
-    """Logs out the user by clearing the session cookie."""
+    """Logs out user by clearing session cookie."""
     resp = RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
     resp.delete_cookie("authforge_user")
     return resp
 
 @app.get("/api/logs")
 async def get_logs():
-    """API endpoint for live log stream in lab dashboard."""
-    logs = get_recent_logs(limit=100)
-    return {"logs": logs}
+    """Returns recent log entries for the live audit stream."""
+    return {"logs": get_recent_logs(limit=100)}
