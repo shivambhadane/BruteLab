@@ -1,12 +1,10 @@
-import time
 import datetime
+import hashlib
+from typing import Optional, List, Dict, Any, Tuple
 from pathlib import Path
-from typing import Tuple, Dict, Any, List, Optional
 from argon2 import PasswordHasher
-from argon2.exceptions import VerifyMismatchError, InvalidHashError
-
-from app.config import settings
-from app.database import get_db_connection, init_db, SAMPLE_CHALLENGE_PASSWORDS
+from argon2.exceptions import VerifyMismatchError
+from app.database import get_db_connection, hash_sha256
 
 ph = PasswordHasher()
 
@@ -14,25 +12,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 LOG_DIR = BASE_DIR / "logs"
 LOG_PATH = LOG_DIR / "auth.log"
 
-def hash_password(password: str) -> str:
-    """Hashes password using Argon2id algorithm."""
-    return ph.hash(password)
-
-def verify_password(password_hash: str, password: str) -> bool:
-    """Verifies a password against an Argon2id hash."""
-    try:
-        return ph.verify(password_hash, password)
-    except (VerifyMismatchError, InvalidHashError):
-        return False
-
-def log_login_attempt(challenge_id: str, username: str, result: str, attempt_number: int, request_ip: str = "127.0.0.1"):
-    """
-    Records Level 2 authentication attempt to logs/auth.log and database.
-    Format: YYYY-MM-DD HH:MM:SS | challenge_id={id} | username={username} | result={result} | attempt={N}
-    """
+def log_event(challenge_id: str, student_code: str, result: str, submission: str):
+    """Logs audit event to logs/auth.log and database audit table."""
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     timestamp_str = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-    log_line = f"{timestamp_str} | challenge_id={challenge_id} | username={username} | result={result} | attempt={attempt_number}\n"
+    log_line = f"{timestamp_str} | challenge_id={challenge_id} | student={student_code} | result={result} | submission={submission}\n"
     
     with open(LOG_PATH, "a", encoding="utf-8") as f:
         f.write(log_line)
@@ -40,9 +24,9 @@ def log_login_attempt(challenge_id: str, username: str, result: str, attempt_num
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("""
-        INSERT INTO authentication_attempts (challenge_id, username, timestamp, result, attempt_number, request_identifier)
-        VALUES (?, ?, ?, ?, ?, ?)
-    """, (challenge_id, username, timestamp_str, result, attempt_number, request_ip))
+        INSERT INTO audit_logs (timestamp, challenge_id, student_code, result, submission)
+        VALUES (?, ?, ?, ?, ?)
+    """, (timestamp_str, challenge_id, student_code, result, submission))
     conn.commit()
     conn.close()
 
@@ -54,239 +38,158 @@ def get_recent_logs(limit: int = 50) -> List[str]:
         lines = f.readlines()
         return [line.strip() for line in lines[-limit:]]
 
-def get_or_create_student_challenge(student_code: str) -> Optional[Dict[str, Any]]:
-    """Retrieves assigned challenge account for a student code."""
+def format_student_code(raw_code: str) -> str:
+    """Formats STU-037 or 37 into STU-037."""
+    clean = raw_code.strip().upper()
+    if clean.isdigit():
+        return f"STU-{int(clean):03d}"
+    return clean
+
+def get_student_challenges(student_code: str) -> List[Dict[str, Any]]:
+    """Retrieves all 3 tier challenges (EASY, MEDIUM, HARD) for a student."""
+    formatted_code = format_student_code(student_code)
     conn = get_db_connection()
     cursor = conn.cursor()
-    
-    # Clean code e.g. STU-037 or 37
-    clean_code = student_code.strip().upper()
-    if clean_code.isdigit():
-        clean_code = f"STU-{int(clean_code):03d}"
     
     cursor.execute("""
-        SELECT ca.*, s.student_code 
-        FROM challenge_accounts ca
-        JOIN students s ON ca.student_id = s.id
-        WHERE s.student_code = ? OR ca.challenge_id = ?
-    """, (clean_code, clean_code.replace("STU-", "AF-")))
+        SELECT challenge_id, tier, hash_type, status, password_hint
+        FROM challenge_hashes
+        WHERE student_code = ?
+        ORDER BY CASE tier WHEN 'EASY' THEN 1 WHEN 'MEDIUM' THEN 2 WHEN 'HARD' THEN 3 END
+    """, (formatted_code,))
     
-    account = cursor.fetchone()
+    rows = cursor.fetchall()
     conn.close()
     
-    if account:
-        attempts_used = account["attempts_used"]
-        attempts_remaining = max(0, settings.MAX_ATTEMPTS - attempts_used)
-        return {
-            "student_code": account["student_code"],
-            "challenge_id": account["challenge_id"],
-            "username": account["username"],
-            "status": account["status"],
-            "attempts_used": attempts_used,
-            "attempts_remaining": attempts_remaining,
-            "password_hint": account["plain_password_hint"]
-        }
-    return None
-
-def check_rate_limit(challenge_id: str) -> Tuple[bool, int]:
-    """
-    Checks if requests for challenge_id exceed MAX_ATTEMPTS_PER_WINDOW.
-    Returns (is_limited, retry_after_seconds).
-    """
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    now_utc = datetime.datetime.now(datetime.timezone.utc)
-    window_start = (now_utc - datetime.timedelta(seconds=settings.RATE_LIMIT_WINDOW)).strftime("%Y-%m-%d %H:%M:%S")
-    cursor.execute("""
-        SELECT COUNT(*) FROM authentication_attempts
-        WHERE challenge_id = ? AND timestamp >= ?
-    """, (challenge_id, window_start))
-    
-    count = cursor.fetchone()[0]
-    conn.close()
-    
-    if count >= settings.MAX_ATTEMPTS_PER_WINDOW:
-        return True, settings.RATE_LIMIT_WINDOW
-    return False, 0
-
-
-def process_login(challenge_id: str, username: str, password: str, request_ip: str = "127.0.0.1") -> Tuple[int, Dict[str, Any]]:
-    """
-    Processes Level 2 authentication with full security controls:
-    - Challenge Isolation Check
-    - Lockout Status Check
-    - Rate Limit Check
-    - Attempt Budget Check
-    - Progressive Delay
-    - Argon2id Password Verification
-    """
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("SELECT * FROM challenge_accounts WHERE challenge_id = ?", (challenge_id,))
-    account = cursor.fetchone()
-
-    if not account:
-        conn.close()
-        return 404, {"status": "failed", "message": "Invalid challenge ID."}
-
-    # Requirement 8: Challenge Isolation (Prevent targeting other accounts)
-    if account["username"] != username:
-        conn.close()
-        log_login_attempt(challenge_id, username, "DENIED_UNAUTHORIZED_ACCOUNT", account["attempts_used"] + 1, request_ip)
-        return 403, {
-            "status": "failed",
-            "message": "Access denied. Account is not assigned to your challenge ID."
-        }
-
-    status = account["status"]
-    attempts_used = account["attempts_used"] + 1
-    failed_attempts = account["failed_attempts"]
-    attempts_remaining = max(0, settings.MAX_ATTEMPTS - attempts_used)
-
-    # Check Rate Limit (V1 Defense) - checked before status
-    is_limited, retry_after = check_rate_limit(challenge_id)
-    if is_limited:
-        conn.close()
-        log_login_attempt(challenge_id, username, "RATE_LIMITED", attempts_used, request_ip)
-        return 429, {
-            "status": "failed",
-            "message": f"Too many authentication attempts. Rate limit triggered. Please wait {retry_after} seconds.",
-            "attempts_used": attempts_used,
-            "attempts_remaining": attempts_remaining
-        }
-
-    if status == "SUCCESS":
-        conn.close()
-        return 200, {
-            "status": "success",
-            "message": "Challenge already completed!",
-            "attempts_used": account["attempts_used"],
-            "attempts_remaining": attempts_remaining
-        }
-
-    if status == "LOCKED":
-        conn.close()
-        log_login_attempt(challenge_id, username, "LOCKED", attempts_used, request_ip)
-        return 423, {
-            "status": "failed",
-            "message": "Account temporarily locked due to excessive failed attempts. Please try again later.",
-            "attempts_used": attempts_used,
-            "attempts_remaining": attempts_remaining
-        }
-
-
-    # Check Attempt Budget
-    if attempts_used > settings.MAX_ATTEMPTS:
-        cursor.execute("UPDATE challenge_accounts SET status = 'EXPIRED' WHERE challenge_id = ?", (challenge_id,))
-        conn.commit()
-        conn.close()
-        log_login_attempt(challenge_id, username, "EXPIRED", attempts_used, request_ip)
-        return 400, {
-            "status": "failed",
-            "message": f"Maximum allowed attempts ({settings.MAX_ATTEMPTS}) reached for this challenge.",
-            "attempts_used": attempts_used,
-            "attempts_remaining": 0
-        }
-
-    # Progressive Delay (V5 Defense)
-    delay = min(settings.PROGRESSIVE_DELAY_BASE * (1.2 ** failed_attempts), 1.5)
-    time.sleep(delay)
-
-    # Verify Argon2id Password Hash
-    is_valid = verify_password(account["password_hash"], password)
-
-    if is_valid:
-        # Calculate time taken
-        created_time = datetime.datetime.strptime(account["created_at"], "%Y-%m-%d %H:%M:%S")
-        now_time = datetime.datetime.now()
-        time_taken = round((now_time - created_time).total_seconds(), 2)
-
-        cursor.execute("""
-            UPDATE challenge_accounts 
-            SET status = 'SUCCESS', attempts_used = ?, completed_at = CURRENT_TIMESTAMP, time_taken_seconds = ?
-            WHERE challenge_id = ?
-        """, (attempts_used, time_taken, challenge_id))
-        conn.commit()
-        conn.close()
-
-        log_login_attempt(challenge_id, username, "SUCCESS", attempts_used, request_ip)
-        return 200, {
-            "status": "success",
-            "message": "CHALLENGE COMPLETE! Authentication successful.",
-            "attempts_used": attempts_used,
-            "attempts_remaining": attempts_remaining,
-            "time_taken_seconds": time_taken
-        }
-    else:
-        new_failed = failed_attempts + 1
-        new_status = "ACTIVE"
+    if not rows:
+        return []
         
-        # Account Lockout Threshold (V2 Defense)
-        if new_failed >= 10:
-            new_status = "LOCKED"
+    return [
+        {
+            "challenge_id": r["challenge_id"],
+            "tier": r["tier"],
+            "hash_type": r["hash_type"],
+            "status": r["status"],
+            "password_hint": r["password_hint"]
+        }
+        for r in rows
+    ]
 
+def get_challenge_file_content(challenge_id: str) -> Optional[Tuple[str, str]]:
+    """
+    Generates John the Ripper formatted challenge file content:
+    username:hash_value\n
+    Returns (filename, content).
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT username, hash_value, challenge_id FROM challenge_hashes WHERE challenge_id = ?", (challenge_id,))
+    row = cursor.fetchone()
+    conn.close()
+    
+    if not row:
+        return None
+        
+    filename = f"challenge_{row['challenge_id']}.txt"
+    content = f"{row['username']}:{row['hash_value']}\n"
+    return filename, content
+
+def verify_submission(challenge_id: str, candidate_password: str) -> Tuple[bool, str, Optional[float]]:
+    """
+    Verifies candidate password against stored challenge hash.
+    Returns (is_correct, message, time_taken_seconds).
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT id, student_code, tier, hash_type, hash_value, plain_password, status, created_at, completed_at, time_taken_seconds
+        FROM challenge_hashes
+        WHERE challenge_id = ?
+    """, (challenge_id,))
+    
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return False, "Invalid Challenge ID", None
+
+    if row["status"] == "SOLVED":
+        conn.close()
+        return True, "Challenge already completed", row["time_taken_seconds"]
+
+    candidate_clean = candidate_password.strip()
+    is_match = False
+    
+    if row["hash_type"] == "SHA-256":
+        candidate_hash = hash_sha256(candidate_clean)
+        is_match = (candidate_hash.lower() == row["hash_value"].lower()) or (candidate_clean == row["plain_password"])
+    elif row["hash_type"] == "Argon2id":
+        if candidate_clean == row["plain_password"]:
+            is_match = True
+        else:
+            try:
+                is_match = ph.verify(row["hash_value"], candidate_clean)
+            except Exception:
+                is_match = False
+
+    if is_match:
+        # Calculate time taken
+        now_utc = datetime.datetime.now(datetime.timezone.utc)
+        now_str = now_utc.strftime("%Y-%m-%d %H:%M:%S")
+        
+        created_at_dt = None
+        try:
+            created_at_dt = datetime.datetime.strptime(row["created_at"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=datetime.timezone.utc)
+        except Exception:
+            created_at_dt = now_utc
+
+        time_taken = (now_utc - created_at_dt).total_seconds()
+        if time_taken < 1.0:
+            time_taken = 1.0  # Floor for realistic educational presentation
 
         cursor.execute("""
-            UPDATE challenge_accounts 
-            SET failed_attempts = ?, attempts_used = ?, status = ?
+            UPDATE challenge_hashes
+            SET status = 'SOLVED', completed_at = ?, time_taken_seconds = ?
             WHERE challenge_id = ?
-        """, (new_failed, attempts_used, new_status, challenge_id))
+        """, (now_str, time_taken, challenge_id))
         conn.commit()
         conn.close()
-
-        if new_status == "LOCKED":
-            log_login_attempt(challenge_id, username, "LOCKED_TRIGGERED", attempts_used, request_ip)
-            return 423, {
-                "status": "failed",
-                "message": "Too many failed attempts. Account is now locked.",
-                "attempts_used": attempts_used,
-                "attempts_remaining": attempts_remaining
-            }
-
-        log_login_attempt(challenge_id, username, "FAILED", attempts_used, request_ip)
-        return 401, {
-            "status": "failed",
-            "message": "Invalid username or password.",
-            "attempts_used": attempts_used,
-            "attempts_remaining": attempts_remaining
-        }
+        
+        log_event(challenge_id, row["student_code"], "SUCCESS", candidate_clean)
+        return True, "CORRECT! Password verified.", round(time_taken, 1)
+    else:
+        conn.close()
+        log_event(challenge_id, row["student_code"], "FAILED", candidate_clean)
+        return False, "INCORRECT! Password candidate does not match hash.", None
 
 def get_leaderboard() -> List[Dict[str, Any]]:
-    """Returns anonymized leaderboard for completed challenges."""
+    """Ranks students by number of tiers solved and minimum total time."""
     conn = get_db_connection()
     cursor = conn.cursor()
     
     cursor.execute("""
-        SELECT challenge_id, attempts_used, time_taken_seconds
-        FROM challenge_accounts
-        WHERE status = 'SUCCESS'
-        ORDER BY time_taken_seconds ASC, attempts_used ASC
-        LIMIT 50
+        SELECT student_code,
+               COUNT(*) AS solved_count,
+               SUM(time_taken_seconds) AS total_seconds
+        FROM challenge_hashes
+        WHERE status = 'SOLVED'
+        GROUP BY student_code
+        ORDER BY solved_count DESC, total_seconds ASC
     """)
     
     rows = cursor.fetchall()
     conn.close()
     
     leaderboard = []
-    for idx, row in enumerate(rows, start=1):
-        secs = row["time_taken_seconds"] or 0
+    for idx, r in enumerate(rows, start=1):
+        secs = r["total_seconds"] or 0
         mins = int(secs // 60)
         rem_secs = int(secs % 60)
-        formatted_time = f"{mins:02d}:{rem_secs:02d}"
-        
+        time_str = f"{mins:02d}:{rem_secs:02d}"
         leaderboard.append({
             "rank": idx,
-            "challenge_id": row["challenge_id"],
-            "attempts_used": row["attempts_used"],
-            "time_taken": formatted_time
+            "student_code": r["student_code"],
+            "solved_count": r["solved_count"],
+            "total_time": time_str
         })
     return leaderboard
-
-def reset_all_challenges(admin_secret: str) -> bool:
-    """Resets all challenge accounts and password hashes for a new classroom round."""
-    if admin_secret != settings.ADMIN_SECRET:
-        return False
-    init_db(force_reseed=True)
-    return True
