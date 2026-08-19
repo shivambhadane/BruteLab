@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AuthForge Level 2 — Security Lab</title>
+    <title>AuthForge Level 2 — John the Ripper Lab</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -12,20 +12,20 @@
         <header class="header-brand">
             <div>
                 <h1 class="brand-title">AuthForge</h1>
-                <p class="brand-subtitle">Level 2 Authentication Security Laboratory</p>
+                <p class="brand-subtitle">Level 2 — John the Ripper Offline Cracking Laboratory</p>
             </div>
             <div>
-                <span class="brand-tag">v2.0.0 • Argon2id</span>
+                <span class="brand-tag">v2.1.0 • Offline Cracking</span>
             </div>
         </header>
 
         <!-- Main Content Grid -->
         <div class="grid-layout">
             
-            <!-- Left Column: Student Code & Challenge Testing -->
+            <!-- Left Column: Student Code, Downloads & Answer Submission -->
             <div class="column-stack">
                 
-                <!-- Initialize Challenge -->
+                <!-- Step 1: Student Access -->
                 <div class="panel">
                     <div class="panel-title" style="margin-bottom: 0.85rem;">Student Access</div>
                     
@@ -42,52 +42,68 @@
                     </form>
                 </div>
 
-                <!-- Active Challenge Session (Hidden until initialized) -->
+                <!-- Step 2: Challenge Tier Selector & Download (Hidden until initialized) -->
                 <div class="panel" id="challenge-card" style="display: none;">
                     <div class="panel-header">
-                        <span class="panel-title">Active Session</span>
-                        <span id="display-challenge-id" class="font-mono" style="font-size: 0.85rem; color: var(--accent-blue-hover);">AF-000</span>
+                        <span class="panel-title">John the Ripper Challenge</span>
+                        <span id="display-student-code" class="font-mono" style="font-size: 0.85rem; color: var(--accent-blue-hover);">STU-037</span>
+                    </div>
+
+                    <!-- Tier Tabs -->
+                    <div style="display: flex; gap: 0.4rem; margin-bottom: 1rem;">
+                        <button onclick="selectTier(0)" id="tier-btn-0" class="btn-secondary" style="flex: 1;">JR-EASY</button>
+                        <button onclick="selectTier(1)" id="tier-btn-1" class="btn-secondary" style="flex: 1;">JR-MEDIUM</button>
+                        <button onclick="selectTier(2)" id="tier-btn-2" class="btn-secondary" style="flex: 1;">JR-HARD</button>
                     </div>
 
                     <div style="margin-bottom: 1rem;">
                         <div class="info-row">
-                            <span class="info-label">Assigned Account</span>
-                            <span id="display-username" class="info-value">student00</span>
+                            <span class="info-label">Active Challenge ID</span>
+                            <span id="display-challenge-id" class="info-value">JR-037-EASY</span>
                         </div>
                         <div class="info-row">
-                            <span class="info-label">Remaining Budget</span>
-                            <span id="display-attempts" class="info-value">50 / 50</span>
+                            <span class="info-label">Hash Algorithm</span>
+                            <span id="display-hash-type" class="info-value">SHA-256</span>
                         </div>
                         <div class="info-row" style="border-bottom: none;">
-                            <span class="info-label">Rate Limiting</span>
-                            <span class="info-value" style="color: #3fb950;">5 / Window</span>
+                            <span class="info-label">Status</span>
+                            <span id="display-status" class="info-value" style="color: #3fb950;">ACTIVE</span>
+                        </div>
+                    </div>
+
+                    <!-- Download Hash File Action -->
+                    <div style="margin-bottom: 1.25rem;">
+                        <a id="download-link" href="#" class="btn-secondary" style="display: block; text-align: center; font-weight: 600; padding: 0.6rem;">
+                            Download Hash File (challenge.txt)
+                        </a>
+                        <div style="font-size: 0.75rem; color: var(--fg-subtle); margin-top: 0.4rem; text-align: center;">
+                            Run locally: <code class="font-mono" style="color: var(--fg-muted);">john --wordlist=dict.txt challenge.txt</code>
                         </div>
                     </div>
 
                     <div id="alert-box"></div>
 
-                    <!-- Password Test Form -->
-                    <form id="login-form" onsubmit="handleLoginSubmit(event)">
+                    <!-- Password Answer Submission Form -->
+                    <form id="submit-form" onsubmit="handlePasswordSubmit(event)">
                         <div class="form-group">
-                            <label class="form-label" for="password">Password Candidate</label>
-                            <input type="password" id="password" name="password" class="form-input" placeholder="Enter candidate password..." required autocomplete="off">
+                            <label class="form-label" for="password">Submit Recovered Password</label>
+                            <input type="text" id="password" name="password" class="form-input" placeholder="Enter plaintext password recovered by John..." required autocomplete="off">
                             <div id="password-hint-box" class="form-hint"></div>
                         </div>
 
-                        <button type="submit" class="btn-primary" id="login-btn">
-                            Submit Authentication
+                        <button type="submit" class="btn-primary" id="submit-btn">
+                            Submit Recovered Password
                         </button>
                     </form>
                 </div>
 
-                <!-- Environment Controls -->
+                <!-- Laboratory Overview -->
                 <div class="panel">
-                    <div class="panel-title" style="margin-bottom: 0.5rem;">Security Controls</div>
+                    <div class="panel-title" style="margin-bottom: 0.5rem;">Laboratory Tiers</div>
                     <ul class="spec-list">
-                        <li><strong>Storage:</strong> Argon2id salted password hashing</li>
-                        <li><strong>Rate Limit:</strong> 5 requests / minute threshold</li>
-                        <li><strong>Lockout:</strong> Account locks after 10 failures</li>
-                        <li><strong>Isolation:</strong> Strict boundary enforcement</li>
+                        <li><strong>JR-EASY (SHA-256):</strong> Basic dictionary hash cracking.</li>
+                        <li><strong>JR-MEDIUM (SHA-256):</strong> Password mutations & John rules.</li>
+                        <li><strong>JR-HARD (Argon2id):</strong> Memory-hard defensive hash comparison.</li>
                     </ul>
                 </div>
             </div>
@@ -106,9 +122,9 @@
                         <thead>
                             <tr>
                                 <th>Rank</th>
-                                <th>Challenge ID</th>
-                                <th>Attempts</th>
-                                <th>Time</th>
+                                <th>Student Code</th>
+                                <th>Solved</th>
+                                <th>Total Time</th>
                             </tr>
                         </thead>
                         <tbody id="leaderboard-body">
@@ -123,8 +139,9 @@
                 <div class="panel">
                     <div class="panel-title" style="margin-bottom: 0.5rem;">Rules of Engagement</div>
                     <ol style="padding-left: 1.1rem; font-size: 0.8rem; color: var(--fg-muted); line-height: 1.6;">
-                        <li>Only target your assigned student challenge ID.</li>
-                        <li>Do not attempt attacks against platform infrastructure.</li>
+                        <li>Download hash files to student computer.</li>
+                        <li>Run John the Ripper locally on your machine.</li>
+                        <li>Submit recovered plaintext answers to AuthForge.</li>
                         <li>Do not scan external non-target IP ranges.</li>
                     </ol>
                 </div>
@@ -143,12 +160,13 @@
         </div>
 
         <footer>
-            AuthForge Level 2 Laboratory Environment
+            AuthForge Level 2 — John the Ripper Offline Cracking Laboratory
         </footer>
     </div>
 
     <script>
-        let currentChallenge = null;
+        let studentChallenges = [];
+        let selectedIndex = 0;
 
         async function handleStartChallenge(e) {
             e.preventDefault();
@@ -164,36 +182,55 @@
 
                 const data = await res.json();
                 if (res.ok) {
-                    currentChallenge = data;
-                    document.getElementById('display-challenge-id').innerText = data.challenge_id;
-                    document.getElementById('display-username').innerText = data.username;
-                    document.getElementById('display-attempts').innerText = `${data.attempts_remaining} / 50`;
-                    document.getElementById('password-hint-box').innerText = data.password_hint ? `Hint: ${data.password_hint}` : '';
+                    studentChallenges = data.challenges;
+                    document.getElementById('display-student-code').innerText = data.student_code;
                     document.getElementById('challenge-card').style.display = 'block';
-                    document.getElementById('alert-box').innerHTML = '';
+                    selectTier(0);
                 } else {
-                    alert(data.detail || 'Failed to initialize session');
+                    alert(data.detail || 'Failed to initialize challenge');
                 }
             } catch (err) {
                 console.error(err);
             }
         }
 
-        async function handleLoginSubmit(e) {
-            e.preventDefault();
-            if (!currentChallenge) return;
+        function selectTier(idx) {
+            if (!studentChallenges || studentChallenges.length <= idx) return;
+            selectedIndex = idx;
+            const ch = studentChallenges[idx];
 
+            document.getElementById('display-challenge-id').innerText = ch.challenge_id;
+            document.getElementById('display-hash-type').innerText = ch.hash_type;
+            document.getElementById('display-status').innerText = ch.status;
+            document.getElementById('display-status').style.color = ch.status === 'SOLVED' ? '#3fb950' : '#f85149';
+            document.getElementById('download-link').href = `/challenge/download/${ch.challenge_id}`;
+            document.getElementById('password-hint-box').innerText = ch.password_hint ? `Hint: ${ch.password_hint}` : '';
+            document.getElementById('alert-box').innerHTML = '';
+
+            [0, 1, 2].forEach(i => {
+                const btn = document.getElementById(`tier-btn-${i}`);
+                if (btn) {
+                    btn.style.backgroundColor = i === idx ? '#30363d' : 'var(--bg-subtle)';
+                    btn.style.borderColor = i === idx ? 'var(--accent-blue-hover)' : 'var(--border-default)';
+                }
+            });
+        }
+
+        async function handlePasswordSubmit(e) {
+            e.preventDefault();
+            if (!studentChallenges || studentChallenges.length <= selectedIndex) return;
+
+            const ch = studentChallenges[selectedIndex];
             const password = document.getElementById('password').value;
-            const btn = document.getElementById('login-btn');
+            const btn = document.getElementById('submit-btn');
             btn.disabled = true;
 
             try {
-                const res = await fetch('/login', {
+                const res = await fetch('/challenge/submit', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        challenge_id: currentChallenge.challenge_id,
-                        username: currentChallenge.username,
+                        challenge_id: ch.challenge_id,
                         password: password
                     })
                 });
@@ -201,19 +238,19 @@
                 const data = await res.json();
                 const alertBox = document.getElementById('alert-box');
 
-                if (data.attempts_remaining !== undefined) {
-                    document.getElementById('display-attempts').innerText = `${data.attempts_remaining} / 50`;
-                }
-
                 if (res.ok && data.status === 'success') {
                     alertBox.innerHTML = `<div class="alert alert-success">[SUCCESS] ${data.message} (${data.time_taken_seconds || 0}s)</div>`;
+                    ch.status = 'SOLVED';
+                    document.getElementById('display-status').innerText = 'SOLVED';
+                    document.getElementById('display-status').style.color = '#3fb950';
                     fetchLeaderboard();
                 } else {
-                    alertBox.innerHTML = `<div class="alert alert-danger">[DENIED] ${data.message || 'Authentication Failed'}</div>`;
+                    alertBox.innerHTML = `<div class="alert alert-danger">[DENIED] ${data.detail || 'Incorrect password candidate'}</div>`;
                 }
                 fetchLogs();
             } catch (err) {
                 console.error(err);
+                document.getElementById('alert-box').innerHTML = '<div class="alert alert-danger">[ERROR] Incorrect password candidate</div>';
             } finally {
                 btn.disabled = false;
                 document.getElementById('password').value = '';
@@ -233,9 +270,9 @@
                     body.innerHTML = data.map(item => `
                         <tr>
                             <td style="font-weight:600;">#${item.rank}</td>
-                            <td class="font-mono">${item.challenge_id}</td>
-                            <td>${item.attempts_used}</td>
-                            <td style="color:#3fb950; font-weight:600;">${item.time_taken}</td>
+                            <td class="font-mono">${item.student_code}</td>
+                            <td>${item.solved_count} / 3</td>
+                            <td style="color:#3fb950; font-weight:600;">${item.total_time}</td>
                         </tr>
                     `).join('');
                 }
@@ -255,7 +292,7 @@
                     container.innerHTML = data.logs.map(line => {
                         let className = 'log-line';
                         if (line.includes('result=SUCCESS')) className += ' log-success';
-                        if (line.includes('result=FAILED') || line.includes('RATE_LIMITED') || line.includes('LOCKED')) className += ' log-failed';
+                        if (line.includes('result=FAILED')) className += ' log-failed';
                         return `<div class="${className}">${line}</div>`;
                     }).join('');
                     container.scrollTop = container.scrollHeight;
