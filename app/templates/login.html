@@ -3,50 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AuthForge Level 2 • Live Classroom Challenge</title>
+    <title>AuthForge Level 2 — Classroom Challenge</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <div class="app-container" style="max-width: 1050px;">
+    <div class="app-container">
         <!-- Header -->
         <header class="header-brand">
             <div class="brand-badge-container">
-                <span class="badge badge-vulnerable" style="background: rgba(16, 185, 129, 0.12); color: #6ee7b7; border-color: rgba(16, 185, 129, 0.3);">
-                    <span class="badge-dot" style="background-color: #10b981;"></span> Level 2 • Defended
-                </span>
-                <span class="badge badge-lab">
-                    <span class="badge-dot"></span> Live Challenge Sandbox
-                </span>
-                <span class="badge badge-lab" style="background: rgba(168, 85, 247, 0.12); color: #c084fc; border-color: rgba(168, 85, 247, 0.3);">
-                    Argon2id Hashing Active
-                </span>
+                <span class="badge badge-defended">Level 2 Defended</span>
+                <span class="badge badge-info">Sandbox</span>
+                <span class="badge badge-crypto">Argon2id</span>
             </div>
             <h1 class="brand-title">AuthForge Level 2</h1>
-            <p class="brand-subtitle">Controlled Classroom Authentication Security Challenge</p>
+            <p class="brand-subtitle">Authentication Security Challenge Laboratory</p>
         </header>
 
         <!-- Main Content Layout -->
-        <div class="grid-layout" style="grid-template-columns: 1.1fr 0.9fr; gap: 1.5rem;">
+        <div class="grid-layout">
             
             <!-- Left Column: Student Code & Challenge Testing -->
-            <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+            <div class="column-stack">
                 
                 <!-- Step 1: Claim Challenge -->
                 <div class="glass-card">
-                    <h2 class="card-title">
-                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                        </svg>
-                        Student Challenge Portal
-                    </h2>
+                    <h2 class="card-title">Student Challenge Portal</h2>
                     
                     <form id="start-challenge-form" onsubmit="handleStartChallenge(event)">
                         <div class="form-group">
-                            <label class="form-label" for="student_code">Enter Student ID / Code</label>
-                            <div style="display: flex; gap: 0.5rem;">
+                            <label class="form-label" for="student_code">Student Code / ID</label>
+                            <div class="input-inline-group">
                                 <input type="text" id="student_code" name="student_code" class="form-input" placeholder="e.g. STU-037 or 37" required autocomplete="off">
-                                <button type="submit" class="btn-primary" style="width: auto; padding: 0 1.25rem;">
-                                    Start
+                                <button type="submit" class="btn-primary btn-inline">
+                                    Initialize
                                 </button>
                             </div>
                         </div>
@@ -55,25 +44,25 @@
 
                 <!-- Step 2: Challenge Dashboard Card (Hidden until claimed) -->
                 <div class="glass-card" id="challenge-card" style="display: none;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-color);">
+                    <div class="challenge-meta-header">
                         <div>
-                            <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Assigned Challenge</span>
-                            <h3 id="display-challenge-id" style="font-size: 1.5rem; font-weight: 800; color: var(--accent-cyan);">AF-000</h3>
+                            <span class="meta-label">Assigned Challenge</span>
+                            <h3 id="display-challenge-id" class="meta-value-highlight">AF-000</h3>
                         </div>
                         <div style="text-align: right;">
-                            <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Assigned Username</span>
-                            <div id="display-username" style="font-size: 1.1rem; font-weight: 700; color: var(--text-main);">student00</div>
+                            <span class="meta-label">Assigned User</span>
+                            <div id="display-username" class="meta-value">student00</div>
                         </div>
                     </div>
 
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1.25rem;">
-                        <div style="background: rgba(15, 23, 42, 0.6); padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
-                            <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Attempts Remaining</div>
-                            <div id="display-attempts" style="font-size: 1.2rem; font-weight: 700; color: var(--accent-emerald);">50 / 50</div>
+                    <div class="metrics-grid">
+                        <div class="metric-box">
+                            <div class="metric-label">Attempts Remaining</div>
+                            <div id="display-attempts" class="metric-value">50 / 50</div>
                         </div>
-                        <div style="background: rgba(15, 23, 42, 0.6); padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
-                            <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Defensive State</div>
-                            <div id="display-defense" style="font-size: 1.2rem; font-weight: 700; color: var(--accent-blue);">ACTIVE</div>
+                        <div class="metric-box">
+                            <div class="metric-label">Security Controls</div>
+                            <div id="display-defense" class="metric-value">ACTIVE</div>
                         </div>
                     </div>
 
@@ -82,68 +71,52 @@
                     <!-- Password Authentication Form -->
                     <form id="login-form" onsubmit="handleLoginSubmit(event)">
                         <div class="form-group">
-                            <label class="form-label" for="password">Test Password Candidate</label>
+                            <label class="form-label" for="password">Password Candidate</label>
                             <input type="password" id="password" name="password" class="form-input" placeholder="Enter password candidate..." required autocomplete="off">
-                            <div id="password-hint-box" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.4rem;"></div>
+                            <div id="password-hint-box" class="form-hint"></div>
                         </div>
 
                         <button type="submit" class="btn-primary" id="login-btn">
-                            <span>Submit Authentication Candidate</span>
+                            Submit Authentication Attempt
                         </button>
                     </form>
                 </div>
 
-                <!-- Rules Card -->
-                <div class="glass-card" style="padding: 1.25rem;">
-                    <h3 style="font-size: 0.95rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.4rem;">
-                        🛡️ Level 2 Security Defenses Implemented
-                    </h3>
-                    <ul class="vulnerability-list">
-                        <li class="vulnerability-item">
-                            <span class="vulnerability-icon">🛡️</span>
-                            <div><strong>Argon2id Password Storage:</strong> Passwords are cryptographically salted & hashed.</div>
-                        </li>
-                        <li class="vulnerability-item">
-                            <span class="vulnerability-icon">🛡️</span>
-                            <div><strong>Rate Limiting (5/min):</strong> Automated request spikes trigger HTTP 429.</div>
-                        </li>
-                        <li class="vulnerability-item">
-                            <span class="vulnerability-icon">🛡️</span>
-                            <div><strong>Account Lockout (5 failures):</strong> Temporarily locks account after consecutive errors.</div>
-                        </li>
-                        <li class="vulnerability-item">
-                            <span class="vulnerability-icon">🛡️</span>
-                            <div><strong>Challenge Isolation:</strong> Requests against unassigned student accounts are denied.</div>
-                        </li>
+                <!-- Security Defenses Card -->
+                <div class="glass-card">
+                    <h3 class="section-heading">Security Controls Implemented</h3>
+                    <ul class="clean-list">
+                        <li><strong>Argon2id Hashing:</strong> Passwords stored with cryptographic salt & key derivation.</li>
+                        <li><strong>Rate Limiting:</strong> Enforces 5 requests/minute per challenge account.</li>
+                        <li><strong>Account Lockout:</strong> Temporarily locks account after 10 failed attempts.</li>
+                        <li><strong>Challenge Isolation:</strong> Prevents targeting unauthorized user accounts.</li>
                     </ul>
                 </div>
             </div>
 
             <!-- Right Column: Leaderboard & Rules -->
-            <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+            <div class="column-stack">
                 
                 <!-- Anonymized Leaderboard -->
                 <div class="glass-card">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                        <h2 class="card-title" style="margin-bottom: 0;">
-                            🏆 Classroom Leaderboard
-                        </h2>
-                        <button onclick="fetchLeaderboard()" class="btn-secondary" style="padding: 0.2rem 0.6rem; font-size: 0.75rem;">Refresh</button>
+                    <div class="card-header-flex">
+                        <h2 class="card-title">Classroom Leaderboard</h2>
+                        <button onclick="fetchLeaderboard()" class="btn-secondary btn-sm">Refresh</button>
                     </div>
 
-                    <div style="overflow-x: auto;">
-                        <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                    <div class="table-wrapper">
+                        <table class="minimal-table">
                             <thead>
-                                <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-muted); text-align: left;">
-                                    <th style="padding: 0.5rem;">Rank</th>
-                                    <th style="padding: 0.5rem;">Challenge ID</th>
-                                    <th style="padding: 0.5rem;">Attempts</th>
-                                    <th style="padding: 0.5rem;">Time</th>
+                                <tr>
+                                    <th>Rank</th>
+                                    <th>Challenge ID</th>
+                                    <th>Attempts</th>
+                                    <th>Time</th>
                                 </tr>
                             </thead>
                             <tbody id="leaderboard-body">
                                 <tr>
-                                    <td colspan="4" style="padding: 1rem; text-align: center; color: var(--text-dim);">No completed challenges yet.</td>
+                                    <td colspan="4" class="table-empty">No completed challenges recorded yet.</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -151,41 +124,33 @@
                 </div>
 
                 <!-- Classroom Rules -->
-                <div class="glass-card" style="padding: 1.25rem;">
-                    <h3 style="font-size: 0.95rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.75rem;">
-                        📜 Classroom Rules of Engagement
-                    </h3>
-                    <ol style="font-size: 0.8rem; color: var(--text-muted); padding-left: 1.2rem; line-height: 1.6;">
+                <div class="glass-card">
+                    <h3 class="section-heading">Rules of Engagement</h3>
+                    <ol class="clean-ordered-list">
                         <li>Use only your assigned challenge account.</li>
                         <li>Do not target another student's challenge ID.</li>
                         <li>Do not attack hosting infrastructure.</li>
                         <li>Do not scan external non-lab systems.</li>
-                        <li>Educational & security research use only.</li>
                     </ol>
                 </div>
             </div>
         </div>
 
-        <!-- Terminal Live Log Feed -->
+        <!-- Terminal Audit Log Feed -->
         <div class="terminal-card">
             <div class="terminal-header">
-                <div class="terminal-dots">
-                    <span class="dot dot-red"></span>
-                    <span class="dot dot-yellow"></span>
-                    <span class="dot dot-green"></span>
-                </div>
                 <div class="terminal-title">
-                    AuthForge Level 2 Security Audit Log (logs/auth.log)
+                    System Audit Stream (logs/auth.log)
                 </div>
-                <button onclick="fetchLogs()" class="btn-secondary" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;">Refresh Logs</button>
+                <button onclick="fetchLogs()" class="btn-secondary btn-sm">Refresh</button>
             </div>
             <div class="terminal-body" id="log-terminal">
-                <div style="color: var(--text-dim);">Loading event stream...</div>
+                <div class="log-dim">Loading system event stream...</div>
             </div>
         </div>
 
         <footer>
-            AuthForge Level 2 • Live Classroom Challenge Laboratory
+            AuthForge Level 2 — Laboratory Environment
         </footer>
     </div>
 
@@ -214,7 +179,7 @@
                     document.getElementById('challenge-card').style.display = 'block';
                     document.getElementById('alert-box').innerHTML = '';
                 } else {
-                    alert(data.detail || 'Failed to claim challenge');
+                    alert(data.detail || 'Failed to initialize challenge');
                 }
             } catch (err) {
                 console.error(err);
@@ -248,12 +213,10 @@
                 }
 
                 if (res.ok && data.status === 'success') {
-                    alertBox.innerHTML = `<div class="alert alert-success">🎉 ${data.message} Time: ${data.time_taken_seconds || 0}s</div>`;
+                    alertBox.innerHTML = `<div class="alert alert-success">[SUCCESS] ${data.message} Time: ${data.time_taken_seconds || 0}s</div>`;
                     fetchLeaderboard();
                 } else {
-                    let alertClass = 'alert-danger';
-                    if (res.status === 429) alertClass = 'alert-danger';
-                    alertBox.innerHTML = `<div class="alert ${alertClass}">⚠️ ${data.message || 'Authentication Failed'}</div>`;
+                    alertBox.innerHTML = `<div class="alert alert-danger">[DENIED] ${data.message || 'Authentication Failed'}</div>`;
                 }
                 fetchLogs();
             } catch (err) {
@@ -271,15 +234,15 @@
                     const data = await res.json();
                     const body = document.getElementById('leaderboard-body');
                     if (data.length === 0) {
-                        body.innerHTML = '<tr><td colspan="4" style="padding: 1rem; text-align: center; color: var(--text-dim);">No completed challenges yet.</td></tr>';
+                        body.innerHTML = '<tr><td colspan="4" class="table-empty">No completed challenges recorded yet.</td></tr>';
                         return;
                     }
                     body.innerHTML = data.map(item => `
-                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
-                            <td style="padding: 0.5rem; font-weight: 700; color: var(--accent-cyan);">#${item.rank}</td>
-                            <td style="padding: 0.5rem; font-family: monospace;">${item.challenge_id}</td>
-                            <td style="padding: 0.5rem;">${item.attempts_used}</td>
-                            <td style="padding: 0.5rem; font-weight: 600; color: var(--accent-emerald);">${item.time_taken}</td>
+                        <tr>
+                            <td class="col-rank">#${item.rank}</td>
+                            <td class="col-mono">${item.challenge_id}</td>
+                            <td>${item.attempts_used}</td>
+                            <td class="col-highlight">${item.time_taken}</td>
                         </tr>
                     `).join('');
                 }
@@ -293,14 +256,13 @@
                     const data = await res.json();
                     const container = document.getElementById('log-terminal');
                     if (!data.logs || data.logs.length === 0) {
-                        container.innerHTML = '<div style="color: var(--text-dim);">No authentication events recorded yet.</div>';
+                        container.innerHTML = '<div class="log-dim">No events logged.</div>';
                         return;
                     }
                     container.innerHTML = data.logs.map(line => {
                         let className = 'log-line';
                         if (line.includes('result=SUCCESS')) className += ' log-success';
-                        if (line.includes('result=FAILED')) className += ' log-failed';
-                        if (line.includes('RATE_LIMITED') || line.includes('LOCKED')) className += ' log-failed';
+                        if (line.includes('result=FAILED') || line.includes('RATE_LIMITED') || line.includes('LOCKED')) className += ' log-failed';
                         return `<div class="${className}">${line}</div>`;
                     }).join('');
                     container.scrollTop = container.scrollHeight;
@@ -310,7 +272,7 @@
 
         fetchLeaderboard();
         fetchLogs();
-        setInterval(fetchLogs, 3000);
+        setInterval(fetchLogs, 4000);
     </script>
 </body>
 </html>

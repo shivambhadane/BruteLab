@@ -21,7 +21,8 @@ def test_login_page_loads():
     response = client.get("/")
     assert response.status_code == 200
     assert "AuthForge Level 2" in response.text
-    assert "Controlled Classroom Authentication Security Challenge" in response.text
+    assert "Authentication Security Challenge" in response.text
+
 
 def test_login_missing_parameters_returns_400():
     payload = {"username": "student01", "password": "password123"}

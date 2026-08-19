@@ -3,49 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AuthForge Level 2 • Laboratory Dashboard</title>
+    <title>AuthForge Level 2 — Dashboard</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <div class="app-container dashboard-container">
+    <div class="app-container">
         <!-- Header -->
-        <header class="header-brand" style="text-align: left; display: flex; justify-content: space-between; align-items: center;">
+        <header class="header-brand" style="text-align: left; display: flex; justify-content: space-between; align-items: flex-end;">
             <div>
                 <div class="brand-badge-container" style="justify-content: flex-start;">
-                    <span class="badge badge-lab" style="background: rgba(16, 185, 129, 0.12); color: #6ee7b7; border-color: rgba(16, 185, 129, 0.3);">
-                        <span class="badge-dot" style="background-color: #10b981;"></span> Challenge Completed
-                    </span>
-                    <span class="badge badge-lab">
-                        Level 2 • Classroom Challenge
-                    </span>
+                    <span class="badge badge-defended">Completed</span>
+                    <span class="badge badge-info">Level 2</span>
                 </div>
-                <h1 class="brand-title" style="font-size: 2rem;">Welcome, {{ username }}</h1>
+                <h1 class="brand-title" style="font-size: 2rem;">User Session: {{ username }}</h1>
                 <p class="brand-subtitle">Authentication challenge successfully solved.</p>
             </div>
             <div>
-                <a href="/logout" class="btn-secondary" id="logout-btn">
-                    Logout
-                </a>
+                <a href="/logout" class="btn-secondary">Logout</a>
             </div>
         </header>
 
         <!-- Session Overview -->
         <div class="glass-card" style="margin-bottom: 1.5rem;">
-            <h2 class="card-title">
-                🏆 Challenge Results
-            </h2>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
-                <div style="background: rgba(15, 23, 42, 0.6); padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
-                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Active Account</div>
-                    <div style="font-size: 1.1rem; font-weight: 700; color: var(--accent-cyan); margin-top: 0.25rem;">{{ username }}</div>
+            <h2 class="card-title">Challenge Verification</h2>
+            <div class="metrics-grid" style="grid-template-columns: repeat(3, 1fr); margin-top: 1rem;">
+                <div class="metric-box">
+                    <div class="metric-label">Active Account</div>
+                    <div class="metric-value" style="color: var(--accent-cyan);">{{ username }}</div>
                 </div>
-                <div style="background: rgba(15, 23, 42, 0.6); padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
-                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Password Storage</div>
-                    <div style="font-size: 1.1rem; font-weight: 700; color: var(--accent-emerald); margin-top: 0.25rem;">Argon2id</div>
+                <div class="metric-box">
+                    <div class="metric-label">Password Storage</div>
+                    <div class="metric-value" style="color: var(--accent-emerald);">Argon2id</div>
                 </div>
-                <div style="background: rgba(15, 23, 42, 0.6); padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
-                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Rate Limiting</div>
-                    <div style="font-size: 1.1rem; font-weight: 700; color: var(--accent-emerald); margin-top: 0.25rem;">5 / Window</div>
+                <div class="metric-box">
+                    <div class="metric-label">Rate Limiting</div>
+                    <div class="metric-value" style="color: var(--accent-emerald);">5 / Min</div>
                 </div>
             </div>
         </div>
@@ -53,23 +45,16 @@
         <!-- Terminal Live Log Feed -->
         <div class="terminal-card">
             <div class="terminal-header">
-                <div class="terminal-dots">
-                    <span class="dot dot-red"></span>
-                    <span class="dot dot-yellow"></span>
-                    <span class="dot dot-green"></span>
-                </div>
-                <div class="terminal-title">
-                    AuthForge Level 2 Audit Stream (logs/auth.log)
-                </div>
-                <button onclick="fetchLogs()" class="btn-secondary" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;">Refresh Logs</button>
+                <div class="terminal-title">System Audit Stream (logs/auth.log)</div>
+                <button onclick="fetchLogs()" class="btn-secondary btn-sm">Refresh</button>
             </div>
             <div class="terminal-body" id="log-terminal">
-                <div style="color: var(--text-dim);">Loading event stream...</div>
+                <div class="log-dim">Loading system event stream...</div>
             </div>
         </div>
 
         <footer>
-            AuthForge Level 2 • Educational Cybersecurity Laboratory
+            AuthForge Level 2 — Laboratory Environment
         </footer>
     </div>
 
@@ -81,13 +66,13 @@
                     const data = await res.json();
                     const container = document.getElementById('log-terminal');
                     if (!data.logs || data.logs.length === 0) {
-                        container.innerHTML = '<div style="color: var(--text-dim);">No authentication events recorded yet.</div>';
+                        container.innerHTML = '<div class="log-dim">No events logged.</div>';
                         return;
                     }
                     container.innerHTML = data.logs.map(line => {
                         let className = 'log-line';
                         if (line.includes('result=SUCCESS')) className += ' log-success';
-                        if (line.includes('result=FAILED') || line.includes('RATE_LIMITED')) className += ' log-failed';
+                        if (line.includes('result=FAILED') || line.includes('RATE_LIMITED') || line.includes('LOCKED')) className += ' log-failed';
                         return `<div class="${className}">${line}</div>`;
                     }).join('');
                     container.scrollTop = container.scrollHeight;
@@ -96,7 +81,7 @@
         }
         
         fetchLogs();
-        setInterval(fetchLogs, 3000);
+        setInterval(fetchLogs, 4000);
     </script>
 </body>
 </html>
