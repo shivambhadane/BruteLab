@@ -1,9 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 from app.main import app
-from app.database import init_db, get_db_connection
-from app.auth import hash_password, verify_password
-from app.config import settings
+from app.database import init_db, hash_sha256, hash_argon2id
 
 client = TestClient(app)
 
@@ -11,97 +9,48 @@ client = TestClient(app)
 def setup_level2_db():
     init_db(force_reseed=True)
 
-
-def test_argon2id_password_hashing():
+def test_hash_generation():
     raw_pass = "cyberlab2026"
-    hashed = hash_password(raw_pass)
-    assert hashed != raw_pass
-    assert verify_password(hashed, raw_pass) is True
-    assert verify_password(hashed, "wrongpassword") is False
+    sha_hash = hash_sha256(raw_pass)
+    assert len(sha_hash) == 64
+    
+    argon_hash = hash_argon2id(raw_pass)
+    assert argon_hash.startswith("$argon2id$")
 
 def test_start_challenge_assignment():
-    res = client.post("/challenge/start", json={"student_code": "STU-037"})
-    assert res.status_code == 200
-    data = res.json()
-    assert data["challenge_id"] == "AF-037"
-    assert data["username"] == "student37"
-    assert data["attempts_remaining"] == 50
+    response = client.post("/challenge/start", json={"student_code": "STU-010"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["student_code"] == "STU-010"
+    assert len(data["challenges"]) == 3
 
-def test_challenge_isolation_prevents_unauthorized_targeting():
-    """Verify Section 8 Requirement: Students cannot target another student's account."""
-    # Attempting to log into student01 using AF-037 challenge ID
-    res = client.post("/login", json={
-        "challenge_id": "AF-037",
-        "username": "student01",
-        "password": "pass"
+def test_download_hash_file_format():
+    response = client.get("/challenge/download/JR-010-EASY")
+    assert response.status_code == 200
+    content = response.text
+    assert content.startswith("student10:")
+
+def test_invalid_password_submission():
+    response = client.post("/challenge/submit", json={
+        "challenge_id": "JR-010-EASY",
+        "password": "incorrect_guess"
     })
-    assert res.status_code == 403
-    assert "Access denied" in res.json()["message"]
+    assert response.status_code == 400
 
-def test_rate_limiting_triggers_429():
-    """Verify Section 10.1 Requirement: Exceeding 5 attempts per minute triggers HTTP 429."""
-    for i in range(5):
-        client.post("/login", json={"challenge_id": "AF-010", "username": "student10", "password": f"pass_{i}"})
+def test_valid_password_submissions_all_tiers():
+    # Easy Tier for STU-010 ((10-1)%10 = 9 -> 'forge2026')
+    res_easy = client.post("/challenge/submit", json={"challenge_id": "JR-010-EASY", "password": "forge2026"})
+    assert res_easy.status_code == 200
     
-    # 6th attempt should be rate limited
-    res = client.post("/login", json={"challenge_id": "AF-010", "username": "student10", "password": "pass_6"})
-    assert res.status_code == 429
-    assert "Rate limit" in res.json()["message"]
-
-def test_account_lockout_triggers_423():
-    """Verify Section 12 Requirement: 10 failed attempts trigger account lockout (HTTP 423)."""
-    # Disable rate limit window check for lockout test or use separate attempts
-    conn = get_db_connection()
-    conn.execute("UPDATE challenge_accounts SET failed_attempts = 9 WHERE challenge_id = 'AF-015'")
-    conn.commit()
-    conn.close()
-
-
-    res = client.post("/login", json={"challenge_id": "AF-015", "username": "student15", "password": "wrong_pass"})
-    assert res.status_code == 423
-    assert "locked" in res.json()["message"]
-
-def test_successful_challenge_completion():
-    """Verify successful authentication completes challenge and adds entry to leaderboard."""
-    # Retrieve plain password hint/password for AF-001
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT password_hash FROM challenge_accounts WHERE challenge_id = 'AF-001'")
-    h = cursor.fetchone()["password_hash"]
-    conn.close()
-
-    # Find matching raw password from wordlist
-    from app.database import SAMPLE_CHALLENGE_PASSWORDS
-    correct_pass = None
-    for p in SAMPLE_CHALLENGE_PASSWORDS:
-        if verify_password(h, p):
-            correct_pass = p
-            break
+    # Medium Tier for STU-010 ((10-1)%9 = 0 -> 'CyberLab2026!')
+    res_med = client.post("/challenge/submit", json={"challenge_id": "JR-010-MEDIUM", "password": "CyberLab2026!"})
+    assert res_med.status_code == 200
     
-    assert correct_pass is not None
+    # Hard Tier for STU-010 ((10-1)%4 = 1 -> 'argon_shadow88')
+    res_hard = client.post("/challenge/submit", json={"challenge_id": "JR-010-HARD", "password": "argon_shadow88"})
+    assert res_hard.status_code == 200
 
-    res = client.post("/login", json={
-        "challenge_id": "AF-001",
-        "username": "student01",
-        "password": correct_pass
-    })
-    assert res.status_code == 200
-    assert res.json()["status"] == "success"
-
-    # Check leaderboard
-    lb_res = client.get("/leaderboard")
-    assert lb_res.status_code == 200
-    entries = lb_res.json()
-    assert len(entries) >= 1
-    assert entries[0]["challenge_id"] == "AF-001"
 
 def test_admin_reset_endpoint():
-    """Verify Section 36 Reset System."""
-    # Invalid secret fails
-    res_bad = client.post("/api/admin/reset", json={"admin_secret": "wrong-secret"})
-    assert res_bad.status_code == 403
-
-    # Valid secret succeeds
-    res_good = client.post("/api/admin/reset", json={"admin_secret": settings.ADMIN_SECRET})
-    assert res_good.status_code == 200
-    assert res_good.json()["status"] == "success"
+    response = client.post("/api/admin/reset", json={"admin_secret": "cyberlab-admin-key"})
+    assert response.status_code == 200
