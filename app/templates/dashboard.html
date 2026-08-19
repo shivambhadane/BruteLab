@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuthForge Level 1 • Laboratory Dashboard</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="app-container dashboard-container">
+        <!-- Header -->
+        <header class="header-brand" style="text-align: left; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <div class="brand-badge-container" style="justify-content: flex-start;">
+                    <span class="badge badge-lab" style="background: rgba(16, 185, 129, 0.12); color: #6ee7b7; border-color: rgba(16, 185, 129, 0.3);">
+                        <span class="badge-dot" style="background-color: #10b981;"></span> Authenticated Session
+                    </span>
+                    <span class="badge badge-lab">
+                        Level 1 • Vulnerable Lab
+                    </span>
+                </div>
+                <h1 class="brand-title" style="font-size: 2rem;">Welcome, {{ username }}</h1>
+                <p class="brand-subtitle">Authentication successful. You have granted access to the lab control panel.</p>
+            </div>
+            <div>
+                <a href="/logout" class="btn-secondary" id="logout-btn">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                    </svg>
+                    Logout
+                </a>
+            </div>
+        </header>
+
+        <!-- Main Dashboard Card -->
+        <div class="glass-card" style="margin-bottom: 1.5rem;">
+            <h2 class="card-title">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                </svg>
+                Session Status & Diagnostics
+            </h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
+                <div style="background: rgba(15, 23, 42, 0.6); padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Active User</div>
+                    <div style="font-size: 1.1rem; font-weight: 700; color: var(--accent-cyan); margin-top: 0.25rem;">{{ username }}</div>
+                </div>
+                <div style="background: rgba(15, 23, 42, 0.6); padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Defensive State</div>
+                    <div style="font-size: 1.1rem; font-weight: 700; color: var(--accent-red); margin-top: 0.25rem;">Disabled (Level 1)</div>
+                </div>
+                <div style="background: rgba(15, 23, 42, 0.6); padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Audit Logging</div>
+                    <div style="font-size: 1.1rem; font-weight: 700; color: var(--accent-emerald); margin-top: 0.25rem;">logs/auth.log</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Terminal Live Log Feed -->
+        <div class="terminal-card">
+            <div class="terminal-header">
+                <div class="terminal-dots">
+                    <span class="dot dot-red"></span>
+                    <span class="dot dot-yellow"></span>
+                    <span class="dot dot-green"></span>
+                </div>
+                <div class="terminal-title">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    </svg>
+                    AuthForge Log Stream (logs/auth.log)
+                </div>
+                <button onclick="fetchLogs()" class="btn-secondary" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;">
+                    Refresh Logs
+                </button>
+            </div>
+            <div class="terminal-body" id="log-terminal">
+                <div style="color: var(--text-dim);">Loading authentication event stream...</div>
+            </div>
+        </div>
+
+        <footer>
+            AuthForge Level 1 • Educational Cybersecurity Laboratory
+        </footer>
+    </div>
+
+    <script>
+        async function fetchLogs() {
+            try {
+                const res = await fetch('/api/logs');
+                if (res.ok) {
+                    const data = await res.json();
+                    const container = document.getElementById('log-terminal');
+                    if (!data.logs || data.logs.length === 0) {
+                        container.innerHTML = '<div style="color: var(--text-dim);">No authentication events recorded yet.</div>';
+                        return;
+                    }
+                    container.innerHTML = data.logs.map(line => {
+                        let className = 'log-line';
+                        if (line.includes('result=SUCCESS')) className += ' log-success';
+                        if (line.includes('result=FAILED')) className += ' log-failed';
+                        return `<div class="${className}">${line}</div>`;
+                    }).join('');
+                    container.scrollTop = container.scrollHeight;
+                }
+            } catch (err) {
+                console.error("Failed to load logs", err);
+            }
+        }
+        
+        fetchLogs();
+        setInterval(fetchLogs, 3000);
+    </script>
+</body>
+</html>
