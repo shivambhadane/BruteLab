@@ -15,38 +15,22 @@
                 <p class="brand-subtitle">Level 2 — John the Ripper Offline Cracking Laboratory</p>
             </div>
             <div>
-                <span class="brand-tag">v2.1.0 • Offline Cracking</span>
+                <span class="brand-tag">v2.1.0 • Offline Lab</span>
             </div>
         </header>
 
         <!-- Main Content Grid -->
         <div class="grid-layout">
             
-            <!-- Left Column: Student Code, Downloads & Answer Submission -->
+            <!-- Left Column: Challenge & Submission -->
             <div class="column-stack">
-                
-                <!-- Step 1: Student Access -->
-                <div class="panel">
-                    <div class="panel-title" style="margin-bottom: 0.85rem;">Student Access</div>
-                    
-                    <form id="start-challenge-form" onsubmit="handleStartChallenge(event)">
-                        <div class="form-group">
-                            <label class="form-label" for="student_code">Student Identifier</label>
-                            <div class="input-group">
-                                <input type="text" id="student_code" name="student_code" class="form-input" placeholder="e.g. STU-037 or 37" required autocomplete="off">
-                                <button type="submit" class="btn-primary btn-inline">
-                                    Initialize
-                                </button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-
-                <!-- Step 2: Challenge Tier Selector & Download (Hidden until initialized) -->
-                <div class="panel" id="challenge-card" style="display: none;">
+                <div class="panel" id="challenge-card">
                     <div class="panel-header">
                         <span class="panel-title">John the Ripper Challenge</span>
-                        <span id="display-student-code" class="font-mono" style="font-size: 0.85rem; color: var(--accent-blue-hover);">STU-037</span>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <label for="student_code_input" class="form-label" style="margin-bottom:0; font-size:0.75rem;">ID:</label>
+                            <input type="text" id="student_code_input" class="form-input" value="STU-001" onchange="loadStudentChallenges()" style="width: 90px; padding: 0.2rem 0.4rem; font-size: 0.8rem; text-align: center;">
+                        </div>
                     </div>
 
                     <!-- Tier Tabs -->
@@ -59,7 +43,7 @@
                     <div style="margin-bottom: 1rem;">
                         <div class="info-row">
                             <span class="info-label">Active Challenge ID</span>
-                            <span id="display-challenge-id" class="info-value">JR-037-EASY</span>
+                            <span id="display-challenge-id" class="info-value">JR-001-EASY</span>
                         </div>
                         <div class="info-row">
                             <span class="info-label">Hash Algorithm</span>
@@ -96,8 +80,10 @@
                         </button>
                     </form>
                 </div>
+            </div>
 
-                <!-- Laboratory Overview -->
+            <!-- Right Column: Guidelines & Controls -->
+            <div class="column-stack">
                 <div class="panel">
                     <div class="panel-title" style="margin-bottom: 0.5rem;">Laboratory Tiers</div>
                     <ul class="spec-list">
@@ -106,36 +92,7 @@
                         <li><strong>JR-HARD (Argon2id):</strong> Memory-hard defensive hash comparison.</li>
                     </ul>
                 </div>
-            </div>
 
-            <!-- Right Column: Leaderboard & Guidelines -->
-            <div class="column-stack">
-                
-                <!-- Leaderboard -->
-                <div class="panel">
-                    <div class="panel-header">
-                        <span class="panel-title">Classroom Leaderboard</span>
-                        <button onclick="fetchLeaderboard()" class="btn-secondary">Refresh</button>
-                    </div>
-
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Rank</th>
-                                <th>Student Code</th>
-                                <th>Solved</th>
-                                <th>Total Time</th>
-                            </tr>
-                        </thead>
-                        <tbody id="leaderboard-body">
-                            <tr>
-                                <td colspan="4" class="table-empty">No completions recorded yet.</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- Guidelines -->
                 <div class="panel">
                     <div class="panel-title" style="margin-bottom: 0.5rem;">Rules of Engagement</div>
                     <ol style="padding-left: 1.1rem; font-size: 0.8rem; color: var(--fg-muted); line-height: 1.6;">
@@ -168,9 +125,8 @@
         let studentChallenges = [];
         let selectedIndex = 0;
 
-        async function handleStartChallenge(e) {
-            e.preventDefault();
-            const code = document.getElementById('student_code').value.trim();
+        async function loadStudentChallenges() {
+            const code = document.getElementById('student_code_input').value.trim();
             if (!code) return;
 
             try {
@@ -183,11 +139,7 @@
                 const data = await res.json();
                 if (res.ok) {
                     studentChallenges = data.challenges;
-                    document.getElementById('display-student-code').innerText = data.student_code;
-                    document.getElementById('challenge-card').style.display = 'block';
-                    selectTier(0);
-                } else {
-                    alert(data.detail || 'Failed to initialize challenge');
+                    selectTier(selectedIndex);
                 }
             } catch (err) {
                 console.error(err);
@@ -243,7 +195,6 @@
                     ch.status = 'SOLVED';
                     document.getElementById('display-status').innerText = 'SOLVED';
                     document.getElementById('display-status').style.color = '#3fb950';
-                    fetchLeaderboard();
                 } else {
                     alertBox.innerHTML = `<div class="alert alert-danger">[DENIED] ${data.detail || 'Incorrect password candidate'}</div>`;
                 }
@@ -255,28 +206,6 @@
                 btn.disabled = false;
                 document.getElementById('password').value = '';
             }
-        }
-
-        async function fetchLeaderboard() {
-            try {
-                const res = await fetch('/leaderboard');
-                if (res.ok) {
-                    const data = await res.json();
-                    const body = document.getElementById('leaderboard-body');
-                    if (data.length === 0) {
-                        body.innerHTML = '<tr><td colspan="4" class="table-empty">No completions recorded yet.</td></tr>';
-                        return;
-                    }
-                    body.innerHTML = data.map(item => `
-                        <tr>
-                            <td style="font-weight:600;">#${item.rank}</td>
-                            <td class="font-mono">${item.student_code}</td>
-                            <td>${item.solved_count} / 3</td>
-                            <td style="color:#3fb950; font-weight:600;">${item.total_time}</td>
-                        </tr>
-                    `).join('');
-                }
-            } catch (err) { console.error(err); }
         }
 
         async function fetchLogs() {
@@ -300,7 +229,7 @@
             } catch (err) { console.error(err); }
         }
 
-        fetchLeaderboard();
+        loadStudentChallenges();
         fetchLogs();
         setInterval(fetchLogs, 4000);
     </script>
