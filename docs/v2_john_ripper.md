@@ -1,11 +1,11 @@
-# AuthForge Level 2 — John the Ripper Offline Cracking Laboratory Specification
+# AuthForge Level 2 — John the Ripper Offline Cracking Laboratory
 
-## 1. Executive Summary
-Level 2 of AuthForge transitions from an online login attack surface to an **offline password-hash cracking laboratory**. By supplying students with formatted hash files (`challenge.txt`), students execute **John the Ripper** locally on their personal machines. This design offloads computationally heavy guessing attacks from the cloud host (Render/AWS) to student laptops while providing an authentic cybersecurity learning experience.
+## Executive Summary
+Level 2 of AuthForge transitions from an online login attack surface to an **offline password-hash cracking laboratory**. By supplying students with formatted hash files (`challenge.txt`), students use **John the Ripper** locally on their personal machines. This design offloads computationally heavy guessing attacks from the cloud host (Render/AWS) to student laptops while providing a authentic cybersecurity learning experience.
 
 ---
 
-## 2. Pedagogical Objectives
+## Pedagogical Objectives
 1. **Understand Offline vs. Online Attacks**: Differentiate between sending HTTP login requests over a network versus cracking hashes offline at maximum CPU/GPU speeds.
 2. **Master John the Ripper Workflow**:
    - Wordlist attacks (`john --wordlist=dict.txt challenge.txt`)
@@ -15,7 +15,7 @@ Level 2 of AuthForge transitions from an online login attack surface to an **off
 
 ---
 
-## 3. Challenge Tiers & Difficulty Progression
+## Challenge Tiers & Difficulty Progression
 
 | Tier | Challenge ID | Hash Algorithm | Password Complexity | Learning Objective |
 | :--- | :--- | :--- | :--- | :--- |
@@ -25,7 +25,7 @@ Level 2 of AuthForge transitions from an online login attack surface to an **off
 
 ---
 
-## 4. Student Workflow & System Architecture
+## Student Workflow & System Architecture
 
 ```text
                AUTHFORGE SERVER
@@ -75,7 +75,7 @@ Level 2 of AuthForge transitions from an online login attack surface to an **off
 
 ---
 
-## 5. Hash File Formats for John the Ripper
+## Hash File Formats for John the Ripper
 
 John the Ripper reads standard user-hash format files (`username:hash`).
 
@@ -91,12 +91,37 @@ student37:$argon2id$v=19$m=65536,t=3,p=4$c29tZXNhbHQ$5z9s...
 
 ---
 
-## 6. API Specifications
+## API Specifications
 
 ### 1. Initialize Student Challenge
 - **Endpoint**: `POST /challenge/start`
 - **Payload**: `{"student_code": "STU-037"}`
-- **Response**: Returns challenge metadata for Tier 1 (Easy), Tier 2 (Medium), Tier 3 (Hard).
+- **Response**:
+  ```json
+  {
+    "student_code": "STU-037",
+    "challenges": [
+      {
+        "challenge_id": "JR-037-EASY",
+        "tier": "EASY",
+        "hash_type": "SHA-256",
+        "status": "ACTIVE"
+      },
+      {
+        "challenge_id": "JR-037-MEDIUM",
+        "tier": "MEDIUM",
+        "hash_type": "SHA-256",
+        "status": "ACTIVE"
+      },
+      {
+        "challenge_id": "JR-037-HARD",
+        "tier": "HARD",
+        "hash_type": "Argon2id",
+        "status": "ACTIVE"
+      }
+    ]
+  }
+  ```
 
 ### 2. Download Hash File
 - **Endpoint**: `GET /challenge/download/{challenge_id}`
@@ -105,8 +130,44 @@ student37:$argon2id$v=19$m=65536,t=3,p=4$c29tZXNhbHQ$5z9s...
 ### 3. Submit Recovered Password
 - **Endpoint**: `POST /challenge/submit`
 - **Payload**: `{"challenge_id": "JR-037-EASY", "password": "cyberlab2026"}`
-- **Response**: Verification result (`success` / `failed`), time taken, and leaderboard rank.
+- **Response**:
+  ```json
+  {
+    "status": "success",
+    "message": "CORRECT! Password verified.",
+    "challenge_id": "JR-037-EASY",
+    "time_taken_seconds": 92.4
+  }
+  ```
 
 ### 4. Classroom Leaderboard
 - **Endpoint**: `GET /leaderboard`
 - **Response**: Ranks students by number of tiers completed and total time taken.
+
+---
+
+## Database Schema (SQLite)
+
+```sql
+CREATE TABLE IF NOT EXISTS challenge_hashes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    student_code TEXT NOT NULL,
+    challenge_id TEXT UNIQUE NOT NULL,
+    tier TEXT NOT NULL, -- EASY, MEDIUM, HARD
+    hash_type TEXT NOT NULL, -- SHA256, ARGON2ID
+    username TEXT NOT NULL,
+    hash_value TEXT NOT NULL,
+    plain_password TEXT NOT NULL,
+    status TEXT DEFAULT 'ACTIVE', -- ACTIVE, SOLVED
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMP,
+    time_taken_seconds REAL
+);
+```
+
+---
+
+## Summary of Educational Benefits
+- Zero server performance degradation with 70 simultaneous students.
+- Realistic cybersecurity workflow using industry-standard tool **John the Ripper**.
+- Clear conceptual demonstration of why modern password hashing (Argon2id) protects user credentials against offline GPU/CPU cracking.
